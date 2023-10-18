@@ -260,6 +260,120 @@ impl fmt::Debug for DebugCapabilityBit {
 
 // }}}
 
+// WordList {{{
+
+#[derive(Copy, Clone)]
+pub struct WordList<'a> {
+	words: &'a crate::Word,
+}
+
+impl<'a> WordList<'a> {
+	pub unsafe fn from_ptr(ptr: *const crate::Word) -> WordList<'a> {
+		WordList { words: &*ptr }
+	}
+
+	pub fn iter(&self) -> WordListIter<'a> {
+		WordListIter::new(self.words)
+	}
+}
+
+impl<'a> IntoIterator for &WordList<'a> {
+	type Item = crate::Word;
+	type IntoIter = WordListIter<'a>;
+
+	fn into_iter(self) -> WordListIter<'a> {
+		self.iter()
+	}
+}
+
+// }}}
+
+// WordListIter {{{
+
+pub struct WordListIter<'a> {
+	words: &'a crate::Word,
+	len: u32,
+}
+
+impl<'a> WordListIter<'a> {
+	fn new(words: &'a crate::Word) -> WordListIter<'a> {
+		unsafe {
+			WordListIter {
+				words: ref_array_next(words),
+				len: ptr::read(words).as_u32(),
+			}
+		}
+	}
+}
+
+impl<'a> Iterator for WordListIter<'a> {
+	type Item = crate::Word;
+
+	fn next(&mut self) -> Option<crate::Word> {
+		if self.len == 0 {
+			return None;
+		}
+		self.len -= 1;
+
+		unsafe {
+			let word = ptr::read(self.words);
+			self.words = ref_array_next(self.words);
+			Some(word)
+		}
+	}
+}
+
+// }}}
+
+// StringList {{{
+
+#[derive(Copy, Clone)]
+pub struct StringList<'a> {
+	strings: &'a crate::StringConst,
+}
+
+impl<'a> StringList<'a> {
+	pub unsafe fn from_ptr(ptr: *const crate::StringConst) -> StringList<'a> {
+		StringList { strings: &*ptr }
+	}
+
+	pub fn iter(&self) -> StringListIter<'a> {
+		StringListIter { strings: self.strings }
+	}
+}
+
+impl<'a> IntoIterator for &StringList<'a> {
+	type Item = &'a CStr;
+	type IntoIter = StringListIter<'a>;
+
+	fn into_iter(self) -> StringListIter<'a> {
+		self.iter()
+	}
+}
+
+// }}}
+
+// StringListIter {{{
+
+pub struct StringListIter<'a> {
+	strings: &'a crate::StringConst,
+}
+
+impl<'a> Iterator for StringListIter<'a> {
+	type Item = &'a CStr;
+
+	fn next(&mut self) -> Option<&'a CStr> {
+		unsafe {
+			let raw = core::ptr::read(self.strings);
+			let cstr = raw.to_c_str()?;
+			self.strings = ref_array_next(self.strings);
+			Some(cstr)
+		}
+	}
+}
+
+// }}}
+
 // BufWriter {{{
 
 pub(crate) struct BufWriter<'a> {
