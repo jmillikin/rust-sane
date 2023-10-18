@@ -1,0 +1,25 @@
+[package]
+name = "sane"
+version = "0.0.0"
+authors = ["John Millikin <john@john-millikin.com>"]
+edition = "2018"
+description = "Types and wrappers for Scanner Access Now Easy (SANE)"
+repository = "https://github.com/jmillikin/rust-sane"
+license = "0BSD"
+
+categories = [
+	"no-std",
+	"api-bindings",
+]
+
+include = [
+	"/LICENSE.txt",
+	"/sane/*.rs",
+]
+
+[lib]
+path = "sane/sane.rs"
+
+[[test]]
+name = "sane_test"
+path = "sane/sane_test.rs"
