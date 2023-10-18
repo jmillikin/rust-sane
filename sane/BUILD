@@ -14,6 +14,7 @@ rust_library(
         "sane.rs",
         "util.rs",
     ],
+    crate_features = ["alloc"],
     edition = "2018",
 )
 

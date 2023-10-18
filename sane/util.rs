@@ -13,8 +13,20 @@
 //
 // SPDX-License-Identifier: 0BSD
 
-use core::ffi::CStr;
-use core::fmt;
+#![allow(unused_imports)]
+
+#[cfg(any(doc, feature = "alloc"))]
+use alloc::{
+	boxed::Box,
+	ffi::CString,
+	vec::Vec,
+};
+
+use core::{
+	ffi::CStr,
+	fmt,
+	ptr,
+};
 
 const fn cstr(bytes: &[u8]) -> &CStr {
 	unsafe { CStr::from_bytes_with_nul_unchecked(bytes) }
@@ -36,18 +48,6 @@ pub struct Device<'a> {
 	kind: &'a CStr,
 }
 
-impl<'a> Device<'a> {
-	pub unsafe fn from_ptr(ptr: *const crate::Device) -> Device<'a> {
-		let raw = &*ptr;
-		Device {
-			name: raw.name.to_c_str().unwrap_or(CSTR_EMPTY),
-			vendor: raw.vendor.to_c_str().unwrap_or(CSTR_EMPTY),
-			model: raw.model.to_c_str().unwrap_or(CSTR_EMPTY),
-			kind: raw.r#type.to_c_str().unwrap_or(CSTR_EMPTY),
-		}
-	}
-}
-
 impl Device<'_> {
 	pub fn name(&self) -> &CStr {
 		self.name
@@ -63,6 +63,39 @@ impl Device<'_> {
 
 	pub fn kind(&self) -> &CStr {
 		self.kind
+	}
+}
+
+impl<'a> Device<'a> {
+	pub fn new(name: &'a CStr) -> Device<'a> {
+		Device {
+			name,
+			vendor: CSTR_EMPTY,
+			model: CSTR_EMPTY,
+			kind: CSTR_EMPTY,
+		}
+	}
+
+	pub unsafe fn from_ptr(ptr: *const crate::Device) -> Device<'a> {
+		let raw = &*ptr;
+		Device {
+			name: raw.name.to_c_str().unwrap_or(CSTR_EMPTY),
+			vendor: raw.vendor.to_c_str().unwrap_or(CSTR_EMPTY),
+			model: raw.model.to_c_str().unwrap_or(CSTR_EMPTY),
+			kind: raw.r#type.to_c_str().unwrap_or(CSTR_EMPTY),
+		}
+	}
+
+	pub fn set_vendor(&mut self, vendor: &'a CStr) {
+		self.vendor = vendor;
+	}
+
+	pub fn set_model(&mut self, model: &'a CStr) {
+		self.model = model;
+	}
+
+	pub fn set_kind(&mut self, kind: &'a CStr) {
+		self.kind = kind;
 	}
 }
 
@@ -112,6 +145,69 @@ impl<'a> Iterator for DevicesIter<'a> {
 			self.devices = ref_array_next(self.devices);
 			Device::from_ptr(device_ptr)
 		})
+	}
+}
+
+// }}}
+
+// DevicesBuf {{{
+
+#[cfg(any(doc, feature = "alloc"))]
+pub struct DevicesBuf {
+	devices: Vec<Box<crate::Device>>,
+	device_ptrs: Vec<*const crate::Device>,
+	strings: Vec<CString>,
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl DevicesBuf {
+	pub fn new() -> DevicesBuf {
+		let mut device_ptrs = Vec::new();
+		device_ptrs.push(ptr::null());
+		DevicesBuf {
+			devices: Vec::new(),
+			device_ptrs,
+			strings: Vec::new(),
+		}
+	}
+
+	pub fn add(&mut self, name: &CStr, f: impl FnOnce(&mut Device)) {
+		let mut dev = Device::new(name);
+		f(&mut dev);
+
+		let cstr_empty_ptr = crate::StringConst::from_c_str(CSTR_EMPTY);
+
+		let mut take_cstr = |cstr: &CStr| -> crate::StringConst {
+			if cstr.is_empty() {
+				cstr_empty_ptr
+			} else {
+				let owned = CString::from(cstr);
+				let ptr = crate::StringConst::from_c_str(&owned);
+				self.strings.push(owned);
+				ptr
+			}
+		};
+
+		let mut raw = crate::Device::new();
+		raw.name = take_cstr(dev.name);
+		raw.vendor = take_cstr(dev.vendor);
+		raw.model = take_cstr(dev.model);
+		raw.r#type = take_cstr(dev.kind);
+
+		let boxed = Box::new(raw);
+		let boxed_ptr: *const crate::Device = Box::as_ref(&boxed);
+		self.devices.push(boxed);
+		self.device_ptrs.pop();
+		self.device_ptrs.push(boxed_ptr);
+		self.device_ptrs.push(ptr::null());
+	}
+
+	pub fn devices(&self) -> Devices {
+		Devices { devices: &self.device_ptrs[0] }
+	}
+
+	pub fn as_ptr(&self) -> *const *const crate::Device {
+		self.device_ptrs.as_ptr()
 	}
 }
 

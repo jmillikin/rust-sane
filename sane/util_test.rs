@@ -23,6 +23,8 @@ const fn cstr(bytes: &[u8]) -> &CStr {
 	unsafe { CStr::from_bytes_with_nul_unchecked(bytes) }
 }
 
+const CSTR_EMPTY: &CStr = cstr(b"\x00");
+
 const CSTR_DEV_NAME: &CStr = cstr(b"device-name\x00");
 const CSTR_DEV_VENDOR: &CStr = cstr(b"device-vendor\x00");
 const CSTR_DEV_MODEL: &CStr = cstr(b"device-model\x00");
@@ -81,6 +83,38 @@ fn util_devices_iter() {
 			"}",
 		),
 	);
+}
+
+#[test]
+fn util_devices_buf() {
+	let mut buf = util::DevicesBuf::new();
+
+	buf.add(CSTR_DEV_NAME, |dev| {
+		dev.set_vendor(CSTR_DEV_VENDOR);
+		dev.set_model(CSTR_DEV_MODEL);
+		dev.set_kind(CSTR_DEV_TYPE);
+	});
+
+	const CSTR_DEV_NAME_2: &CStr = cstr(b"device-name-2\x00");
+	buf.add(CSTR_DEV_NAME_2, |_dev| {});
+
+	let devices = unsafe { util::Devices::from_ptr(buf.as_ptr()) };
+	let devices_vec: Vec<_> = devices.into_iter().collect();
+
+	assert_eq!(devices_vec.len(), 2);
+
+	assert_eq!(devices_vec[0].name(), CSTR_DEV_NAME);
+	assert_eq!(devices_vec[0].vendor(), CSTR_DEV_VENDOR);
+	assert_eq!(devices_vec[0].model(), CSTR_DEV_MODEL);
+	assert_eq!(devices_vec[0].kind(), CSTR_DEV_TYPE);
+
+	assert_eq!(devices_vec[1].name(), CSTR_DEV_NAME_2);
+	assert_eq!(devices_vec[1].vendor(), CSTR_EMPTY);
+	assert_eq!(devices_vec[1].model(), CSTR_EMPTY);
+	assert_eq!(devices_vec[1].kind(), CSTR_EMPTY);
+
+	let devices_vec_2: Vec<_> = buf.devices().into_iter().collect();
+	assert_eq!(devices_vec_2.len(), 2);
 }
 
 #[test]

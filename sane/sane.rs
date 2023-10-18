@@ -15,6 +15,9 @@
 
 #![no_std]
 
+#[cfg(any(doc, feature = "alloc"))]
+extern crate alloc;
+
 use core::ffi;
 use core::fmt;
 use core::mem;
