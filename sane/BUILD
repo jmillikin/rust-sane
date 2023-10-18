@@ -25,6 +25,14 @@ rust_test(
     deps = [":sane"],
 )
 
+rust_test(
+    name = "sane_util_test",
+    size = "small",
+    srcs = ["sane_util_test.rs"],
+    edition = "2018",
+    deps = [":sane"],
+)
+
 rust_doc(
     name = "sane_doc",
     crate = ":sane",

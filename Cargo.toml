@@ -23,3 +23,7 @@ path = "sane/sane.rs"
 [[test]]
 name = "sane_test"
 path = "sane/sane_test.rs"
+
+[[test]]
+name = "sane_util_test"
+path = "sane/sane_util_test.rs"

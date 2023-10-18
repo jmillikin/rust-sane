@@ -20,6 +20,103 @@ const fn cstr(bytes: &[u8]) -> &CStr {
 	unsafe { CStr::from_bytes_with_nul_unchecked(bytes) }
 }
 
+const CSTR_EMPTY: &CStr = cstr(b"\x00");
+
+unsafe fn ref_array_next<T>(t: &T) -> &T {
+	&*((t as *const T).add(1))
+}
+
+// Device {{{
+
+#[derive(Clone, Copy, Debug)]
+pub struct Device<'a> {
+	name: &'a CStr,
+	vendor: &'a CStr,
+	model: &'a CStr,
+	kind: &'a CStr,
+}
+
+impl<'a> Device<'a> {
+	pub unsafe fn from_ptr(ptr: *const crate::Device) -> Device<'a> {
+		let raw = &*ptr;
+		Device {
+			name: raw.name.to_c_str().unwrap_or(CSTR_EMPTY),
+			vendor: raw.vendor.to_c_str().unwrap_or(CSTR_EMPTY),
+			model: raw.model.to_c_str().unwrap_or(CSTR_EMPTY),
+			kind: raw.r#type.to_c_str().unwrap_or(CSTR_EMPTY),
+		}
+	}
+}
+
+impl Device<'_> {
+	pub fn name(&self) -> &CStr {
+		self.name
+	}
+
+	pub fn vendor(&self) -> &CStr {
+		self.vendor
+	}
+
+	pub fn model(&self) -> &CStr {
+		self.model
+	}
+
+	pub fn kind(&self) -> &CStr {
+		self.kind
+	}
+}
+
+// }}}
+
+// Devices {{{
+
+pub struct Devices<'a> {
+	devices: &'a *const crate::Device,
+}
+
+impl<'a> Devices<'a> {
+	pub unsafe fn from_ptr(
+		ptr: *const *const crate::Device,
+	) -> Devices<'a> {
+		Devices { devices: &*ptr }
+	}
+
+	pub fn iter(&self) -> DevicesIter<'a> {
+		DevicesIter { devices: self.devices }
+	}
+}
+
+impl<'a> IntoIterator for &Devices<'a> {
+	type Item = Device<'a>;
+	type IntoIter = DevicesIter<'a>;
+
+	fn into_iter(self) -> DevicesIter<'a> {
+		self.iter()
+	}
+}
+
+// }}}
+
+// DevicesIter {{{
+
+pub struct DevicesIter<'a> {
+	devices: &'a *const crate::Device,
+}
+
+impl<'a> Iterator for DevicesIter<'a> {
+	type Item = Device<'a>;
+
+	fn next(&mut self) -> Option<Device<'a>> {
+		Some(unsafe {
+			let device_ptr: *const _ = self.devices.as_ref()?;
+			self.devices = ref_array_next(self.devices);
+			Device::from_ptr(device_ptr)
+		})
+	}
+}
+
+// }}}
+
 // BufWriter {{{
 
 pub(crate) struct BufWriter<'a> {
