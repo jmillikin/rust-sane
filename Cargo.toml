@@ -25,5 +25,5 @@ name = "sane_test"
 path = "sane/sane_test.rs"
 
 [[test]]
-name = "sane_util_test"
-path = "sane/sane_util_test.rs"
+name = "util_test"
+path = "sane/util_test.rs"

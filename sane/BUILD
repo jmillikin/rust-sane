@@ -26,9 +26,9 @@ rust_test(
 )
 
 rust_test(
-    name = "sane_util_test",
+    name = "util_test",
     size = "small",
-    srcs = ["sane_util_test.rs"],
+    srcs = ["util_test.rs"],
     edition = "2018",
     deps = [":sane"],
 )
