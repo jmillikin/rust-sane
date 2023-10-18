@@ -82,3 +82,47 @@ fn util_devices_iter() {
 		),
 	);
 }
+
+#[test]
+fn util_capabilities() {
+	let _ = util::Capabilities::new().clone();
+
+	fn cap(bit: u32) -> util::Capabilities {
+		unsafe { core::mem::transmute(bit) }
+	}
+
+	assert_eq!(format!("{:?}", cap(0)), "Capabilities {}");
+
+	assert_eq!(
+		format!("{:?}", cap(sane::CAP_SOFT_SELECT)),
+		"Capabilities {SANE_CAP_SOFT_SELECT}",
+	);
+	assert_eq!(
+		format!("{:?}", cap(sane::CAP_HARD_SELECT)),
+		"Capabilities {SANE_CAP_HARD_SELECT}",
+	);
+	assert_eq!(
+		format!("{:?}", cap(sane::CAP_SOFT_DETECT)),
+		"Capabilities {SANE_CAP_SOFT_DETECT}",
+	);
+	assert_eq!(
+		format!("{:?}", cap(sane::CAP_EMULATED)),
+		"Capabilities {SANE_CAP_EMULATED}",
+	);
+	assert_eq!(
+		format!("{:?}", cap(sane::CAP_AUTOMATIC)),
+		"Capabilities {SANE_CAP_AUTOMATIC}",
+	);
+	assert_eq!(
+		format!("{:?}", cap(sane::CAP_INACTIVE)),
+		"Capabilities {SANE_CAP_INACTIVE}",
+	);
+	assert_eq!(
+		format!("{:?}", cap(sane::CAP_ADVANCED)),
+		"Capabilities {SANE_CAP_ADVANCED}",
+	);
+	assert_eq!(
+		format!("{:?}", cap(1u32 << 31)),
+		"Capabilities {0x80000000}",
+	);
+}

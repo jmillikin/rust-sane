@@ -117,6 +117,53 @@ impl<'a> Iterator for DevicesIter<'a> {
 
 // }}}
 
+// Capabilities {{{
+
+#[derive(Clone, Copy)]
+pub struct Capabilities {
+	bits: u32,
+}
+
+impl fmt::Debug for Capabilities {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		f.write_str("Capabilities ")?;
+		let mut dbg = f.debug_set();
+		for bit in 0..32 {
+			let mask: u32 = 1 << bit;
+			if self.bits & mask == 0 {
+				continue;
+			}
+			dbg.entry(&DebugCapabilityBit(mask));
+		}
+		dbg.finish()
+	}
+}
+
+impl Capabilities {
+	pub fn new() -> Capabilities {
+		Self { bits: 0 }
+	}
+}
+
+struct DebugCapabilityBit(u32);
+
+impl fmt::Debug for DebugCapabilityBit {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		match self.0 {
+			crate::CAP_SOFT_SELECT => f.write_str("SANE_CAP_SOFT_SELECT"),
+			crate::CAP_HARD_SELECT => f.write_str("SANE_CAP_HARD_SELECT"),
+			crate::CAP_SOFT_DETECT => f.write_str("SANE_CAP_SOFT_DETECT"),
+			crate::CAP_EMULATED => f.write_str("SANE_CAP_EMULATED"),
+			crate::CAP_AUTOMATIC => f.write_str("SANE_CAP_AUTOMATIC"),
+			crate::CAP_INACTIVE => f.write_str("SANE_CAP_INACTIVE"),
+			crate::CAP_ADVANCED => f.write_str("SANE_CAP_ADVANCED"),
+			_ => write!(f, "{:#010X}", self.0),
+		}
+	}
+}
+
+// }}}
+
 // BufWriter {{{
 
 pub(crate) struct BufWriter<'a> {
