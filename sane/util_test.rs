@@ -160,3 +160,43 @@ fn util_capabilities() {
 		"Capabilities {0x80000000}",
 	);
 }
+
+#[test]
+fn util_word_list() {
+	let raw = [
+		sane::Word::new(3),
+		sane::Word::new(10),
+		sane::Word::new(20),
+		sane::Word::new(30),
+	];
+	let raw_ptr: *const sane::Word = raw.as_ptr();
+
+	let word_list = unsafe { util::WordList::from_ptr(raw_ptr) };
+	let words: Vec<_> = word_list.into_iter().collect();
+
+	assert_eq!(words, vec![
+		sane::Word::new(10),
+		sane::Word::new(20),
+		sane::Word::new(30),
+	]);
+}
+
+#[test]
+fn util_string_list() {
+	let raw = [
+		cstr(b"aaa\x00").as_ptr(),
+		cstr(b"bbb\x00").as_ptr(),
+		cstr(b"ccc\x00").as_ptr(),
+		ptr::null(),
+	];
+	let raw_ptr: *const sane::StringConst = raw.as_ptr().cast();
+
+	let string_list = unsafe { util::StringList::from_ptr(raw_ptr) };
+	let strings: Vec<_> = string_list.into_iter().collect();
+
+	assert_eq!(strings, vec![
+		cstr(b"aaa\x00"),
+		cstr(b"bbb\x00"),
+		cstr(b"ccc\x00"),
+	]);
+}
