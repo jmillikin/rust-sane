@@ -161,6 +161,365 @@ fn util_option_descriptor() {
 }
 
 #[test]
+fn bool_option_builder() {
+	let buf = util::BoolOptionBuilder::new(CSTR_OPT_NAME)
+		.title(CSTR_OPT_TITLE)
+		.description(CSTR_OPT_DESC)
+		.capabilities({
+			let mut caps = util::Capabilities::new();
+			// TODO
+			caps
+		})
+		.build();
+
+	let option = buf.option_descriptor();
+
+	assert_eq!(option.name(), CSTR_OPT_NAME);
+	assert_eq!(option.title(), CSTR_OPT_TITLE);
+	assert_eq!(option.description(), CSTR_OPT_DESC);
+	assert_eq!(option.value_type(), sane::ValueType::BOOL);
+	assert_eq!(option.size(), size_of::<sane::Bool>());
+
+	assert_eq!(
+		format!("{:#?}", option),
+		concat!(
+			"OptionDescriptor {\n",
+			"    name: \"option-name\",\n",
+			"    title: \"option-title\",\n",
+			"    description: \"option-description\",\n",
+			"    value_type: SANE_TYPE_BOOL,\n",
+			"    unit: SANE_UNIT_NONE,\n",
+			"    size: 4,\n",
+			"    capabilities: Capabilities {},\n",
+			"    constraint: None,\n",
+			"}",
+		),
+	);
+}
+
+#[test]
+fn int_option_builder() {
+	let buf = util::IntOptionBuilder::new(CSTR_OPT_NAME)
+		.title(CSTR_OPT_TITLE)
+		.description(CSTR_OPT_DESC)
+		.unit(sane::Unit::PIXEL)
+		.capabilities({
+			let mut caps = util::Capabilities::new();
+			// TODO
+			caps
+		})
+		.build();
+
+	let option = buf.option_descriptor();
+
+	assert_eq!(option.name(), CSTR_OPT_NAME);
+	assert_eq!(option.title(), CSTR_OPT_TITLE);
+	assert_eq!(option.description(), CSTR_OPT_DESC);
+	assert_eq!(option.value_type(), sane::ValueType::INT);
+	assert_eq!(option.unit(), sane::Unit::PIXEL);
+	assert_eq!(option.size(), size_of::<sane::Int>());
+
+	assert_eq!(
+		format!("{:#?}", option),
+		concat!(
+			"OptionDescriptor {\n",
+			"    name: \"option-name\",\n",
+			"    title: \"option-title\",\n",
+			"    description: \"option-description\",\n",
+			"    value_type: SANE_TYPE_INT,\n",
+			"    unit: SANE_UNIT_PIXEL,\n",
+			"    size: 4,\n",
+			"    capabilities: Capabilities {},\n",
+			"    constraint: None,\n",
+			"}",
+		),
+	);
+}
+
+#[test]
+fn int_option_builder_count() {
+	let buf = util::IntOptionBuilder::new(CSTR_EMPTY)
+		.count(123)
+		.build();
+
+	let option = buf.option_descriptor();
+
+	assert_eq!(option.size(), 123 * size_of::<sane::Int>());
+}
+
+#[test]
+fn int_option_builder_range() {
+	let buf = util::IntOptionBuilder::new(CSTR_EMPTY)
+		.range(0, 100, 1)
+		.build();
+
+	let option = buf.option_descriptor();
+
+	assert_eq!(
+		format!("{:#?}", option.constraint()),
+		concat!(
+			"Range {\n",
+			"    min: SANE_Int(0),\n",
+			"    max: SANE_Int(100),\n",
+			"    quant: SANE_Int(1),\n",
+			"}",
+		),
+	);
+}
+
+#[test]
+fn int_option_builder_values() {
+	let buf = util::IntOptionBuilder::new(CSTR_EMPTY)
+		.values(&[1, 2, 3])
+		.build();
+
+	let option = buf.option_descriptor();
+
+	assert_eq!(
+		format!("{:#?}", option.constraint()),
+		concat!(
+			"[\n",
+			"    SANE_Int(1),\n",
+			"    SANE_Int(2),\n",
+			"    SANE_Int(3),\n",
+			"]",
+		),
+	);
+}
+
+#[test]
+fn fixed_option_builder() {
+	let buf = util::FixedOptionBuilder::new(CSTR_OPT_NAME)
+		.title(CSTR_OPT_TITLE)
+		.description(CSTR_OPT_DESC)
+		.unit(sane::Unit::PIXEL)
+		.capabilities({
+			let mut caps = util::Capabilities::new();
+			// TODO
+			caps
+		})
+		.build();
+
+	let option = buf.option_descriptor();
+
+	assert_eq!(option.name(), CSTR_OPT_NAME);
+	assert_eq!(option.title(), CSTR_OPT_TITLE);
+	assert_eq!(option.description(), CSTR_OPT_DESC);
+	assert_eq!(option.value_type(), sane::ValueType::FIXED);
+	assert_eq!(option.unit(), sane::Unit::PIXEL);
+	assert_eq!(option.size(), size_of::<sane::Fixed>());
+
+	assert_eq!(
+		format!("{:#?}", option),
+		concat!(
+			"OptionDescriptor {\n",
+			"    name: \"option-name\",\n",
+			"    title: \"option-title\",\n",
+			"    description: \"option-description\",\n",
+			"    value_type: SANE_TYPE_FIXED,\n",
+			"    unit: SANE_UNIT_PIXEL,\n",
+			"    size: 4,\n",
+			"    capabilities: Capabilities {},\n",
+			"    constraint: None,\n",
+			"}",
+		),
+	);
+}
+
+#[test]
+fn fixed_option_builder_count() {
+	let buf = util::FixedOptionBuilder::new(CSTR_EMPTY)
+		.count(123)
+		.build();
+
+	let option = buf.option_descriptor();
+
+	assert_eq!(option.size(), 123 * size_of::<sane::Fixed>());
+}
+
+#[test]
+fn fixed_option_builder_range() {
+	let buf = util::FixedOptionBuilder::new(CSTR_EMPTY)
+		.range(
+			sane::Fixed::new(0, 0),
+			sane::Fixed::new(100, 0),
+			sane::Fixed::new(1, 0),
+		)
+		.build();
+
+	let option = buf.option_descriptor();
+
+	assert_eq!(
+		format!("{:#?}", option.constraint()),
+		concat!(
+			"Range {\n",
+			"    min: SANE_Fixed(0.0),\n",
+			"    max: SANE_Fixed(100.0),\n",
+			"    quant: SANE_Fixed(1.0),\n",
+			"}",
+		),
+	);
+}
+
+#[test]
+fn fixed_option_builder_values() {
+	let buf = util::FixedOptionBuilder::new(CSTR_EMPTY)
+		.values(&[
+			sane::Fixed::new(1, 0),
+			sane::Fixed::new(2, 0),
+			sane::Fixed::new(3, 0),
+		])
+		.build();
+
+	let option = buf.option_descriptor();
+
+	assert_eq!(
+		format!("{:#?}", option.constraint()),
+		concat!(
+			"[\n",
+			"    SANE_Fixed(1.0),\n",
+			"    SANE_Fixed(2.0),\n",
+			"    SANE_Fixed(3.0),\n",
+			"]",
+		),
+	);
+}
+
+#[test]
+fn string_option_builder() {
+	let buf = util::StringOptionBuilder::new(CSTR_OPT_NAME, 1234)
+		.title(CSTR_OPT_TITLE)
+		.description(CSTR_OPT_DESC)
+		.unit(sane::Unit::PIXEL)
+		.capabilities({
+			let mut caps = util::Capabilities::new();
+			// TODO
+			caps
+		})
+		.build();
+
+	let option = buf.option_descriptor();
+
+	assert_eq!(option.name(), CSTR_OPT_NAME);
+	assert_eq!(option.title(), CSTR_OPT_TITLE);
+	assert_eq!(option.description(), CSTR_OPT_DESC);
+	assert_eq!(option.value_type(), sane::ValueType::STRING);
+	assert_eq!(option.unit(), sane::Unit::PIXEL);
+	assert_eq!(option.size(), 1234);
+
+	assert_eq!(
+		format!("{:#?}", option),
+		concat!(
+			"OptionDescriptor {\n",
+			"    name: \"option-name\",\n",
+			"    title: \"option-title\",\n",
+			"    description: \"option-description\",\n",
+			"    value_type: SANE_TYPE_STRING,\n",
+			"    unit: SANE_UNIT_PIXEL,\n",
+			"    size: 1234,\n",
+			"    capabilities: Capabilities {},\n",
+			"    constraint: None,\n",
+			"}",
+		),
+	);
+}
+
+#[test]
+fn string_option_builder_values() {
+	let buf = util::StringOptionBuilder::new(CSTR_EMPTY, 1234)
+		.values(&[
+			cstr(b"aaa\x00"),
+			cstr(b"bbb\x00"),
+			cstr(b"ccc\x00"),
+		])
+		.build();
+
+	let option = buf.option_descriptor();
+
+	assert_eq!(
+		format!("{:#?}", option.constraint()),
+		concat!(
+			"[\n",
+			"    \"aaa\",\n",
+			"    \"bbb\",\n",
+			"    \"ccc\",\n",
+			"]",
+		),
+	);
+}
+
+#[test]
+fn button_option_builder() {
+	let buf = util::ButtonOptionBuilder::new(CSTR_OPT_NAME)
+		.title(CSTR_OPT_TITLE)
+		.description(CSTR_OPT_DESC)
+		.capabilities({
+			let mut caps = util::Capabilities::new();
+			// TODO
+			caps
+		})
+		.build();
+
+	let option = buf.option_descriptor();
+
+	assert_eq!(option.name(), CSTR_OPT_NAME);
+	assert_eq!(option.title(), CSTR_OPT_TITLE);
+	assert_eq!(option.description(), CSTR_OPT_DESC);
+	assert_eq!(option.value_type(), sane::ValueType::BUTTON);
+	assert_eq!(option.unit(), sane::Unit::NONE);
+	assert_eq!(option.size(), 0);
+
+	assert_eq!(
+		format!("{:#?}", option),
+		concat!(
+			"OptionDescriptor {\n",
+			"    name: \"option-name\",\n",
+			"    title: \"option-title\",\n",
+			"    description: \"option-description\",\n",
+			"    value_type: SANE_TYPE_BUTTON,\n",
+			"    unit: SANE_UNIT_NONE,\n",
+			"    size: 0,\n",
+			"    capabilities: Capabilities {},\n",
+			"    constraint: None,\n",
+			"}",
+		),
+	);
+}
+
+#[test]
+fn group_option_builder() {
+	let buf = util::GroupOptionBuilder::new()
+		.title(CSTR_OPT_TITLE)
+		.description(CSTR_OPT_DESC)
+		.build();
+
+	let option = buf.option_descriptor();
+
+	assert_eq!(option.name(), CSTR_EMPTY);
+	assert_eq!(option.title(), CSTR_OPT_TITLE);
+	assert_eq!(option.description(), CSTR_OPT_DESC);
+	assert_eq!(option.value_type(), sane::ValueType::GROUP);
+	assert_eq!(option.unit(), sane::Unit::NONE);
+	assert_eq!(option.size(), 0);
+
+	assert_eq!(
+		format!("{:#?}", option),
+		concat!(
+			"OptionDescriptor {\n",
+			"    name: \"\",\n",
+			"    title: \"option-title\",\n",
+			"    description: \"option-description\",\n",
+			"    value_type: SANE_TYPE_GROUP,\n",
+			"    unit: SANE_UNIT_NONE,\n",
+			"    size: 0,\n",
+			"    capabilities: Capabilities {},\n",
+			"    constraint: None,\n",
+			"}",
+		),
+	);
+}
+
+#[test]
 fn util_capabilities() {
 	let _ = util::Capabilities::new().clone();
 

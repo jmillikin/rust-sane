@@ -25,6 +25,7 @@ use alloc::{
 use core::{
 	ffi::CStr,
 	fmt,
+	mem::size_of,
 	ptr,
 };
 
@@ -302,6 +303,503 @@ impl OptionDescriptor<'_> {
 
 //}}}
 
+// OptionDescriptorBuf {{{
+
+#[cfg(any(doc, feature = "alloc"))]
+pub struct OptionDescriptorBuf {
+	raw: Box<crate::OptionDescriptor>,
+	strings: Vec<CString>,
+	constraint_range: Option<Box<crate::Range>>,
+	constraint_word_list: Vec<crate::Word>,
+	constraint_string_list: Vec<crate::StringConst>,
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl OptionDescriptorBuf {
+	fn new(name: &CStr, title: &CStr, desc: &CStr) -> OptionDescriptorBuf {
+		let mut strings = Vec::new();
+
+		let cstr_empty_ptr = crate::StringConst::from_c_str(CSTR_EMPTY);
+		let mut take_cstr = |cstr: &CStr| -> crate::StringConst {
+			if cstr.is_empty() {
+				cstr_empty_ptr
+			} else {
+				let owned = CString::from(cstr);
+				let ptr = crate::StringConst::from_c_str(&owned);
+				strings.push(owned);
+				ptr
+			}
+		};
+
+		let mut raw = Box::new(crate::OptionDescriptor::new());
+		raw.name = take_cstr(name);
+		raw.title = take_cstr(title);
+		raw.desc = take_cstr(desc);
+
+		OptionDescriptorBuf {
+			raw,
+			strings,
+			constraint_range: None,
+			constraint_word_list: Vec::new(),
+			constraint_string_list: Vec::new(),
+		}
+	}
+
+	pub fn option_descriptor<'a>(&'a self) -> OptionDescriptor<'a> {
+		unsafe { OptionDescriptor::from_ptr(self.as_ptr()) }
+	}
+
+	pub fn as_ptr(&self) -> *const crate::OptionDescriptor {
+		Box::as_ref(&self.raw)
+	}
+}
+
+// }}}
+
+// BoolOptionBuilder {{{
+
+#[cfg(any(doc, feature = "alloc"))]
+pub struct BoolOptionBuilder<'a> {
+	name: &'a CStr,
+	title: &'a CStr,
+	description: &'a CStr,
+	capabilities: Capabilities,
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl<'a> BoolOptionBuilder<'a> {
+	pub fn new(name: &'a CStr) -> Self {
+		Self {
+			name,
+			title: CSTR_EMPTY,
+			description: CSTR_EMPTY,
+			capabilities: Capabilities::new(),
+		}
+	}
+
+	pub fn title(&mut self, title: &'a CStr) -> &mut Self {
+		self.title = title;
+		self
+	}
+
+	pub fn description(&mut self, description: &'a CStr) -> &mut Self {
+		self.description = description;
+		self
+	}
+
+	pub fn capabilities(&mut self, capabilities: Capabilities) -> &mut Self {
+		self.capabilities = capabilities;
+		self
+	}
+
+	pub fn build(&self) -> OptionDescriptorBuf {
+		let mut buf = OptionDescriptorBuf::new(
+			self.name,
+			self.title,
+			self.description,
+		);
+		buf.raw.r#type = crate::ValueType::BOOL;
+		buf.raw.size = crate::Int::new(size_of::<crate::Bool>() as i32);
+		buf.raw.cap = self.capabilities.as_int();
+		buf
+	}
+}
+
+// }}}
+
+// IntOptionBuilder {{{
+
+#[cfg(any(doc, feature = "alloc"))]
+pub struct IntOptionBuilder<'a> {
+	name: &'a CStr,
+	title: &'a CStr,
+	description: &'a CStr,
+	unit: crate::Unit,
+	capabilities: Capabilities,
+	size: i32,
+	range: Option<crate::Range>,
+	values: Option<&'a [i32]>,
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl<'a> IntOptionBuilder<'a> {
+	pub fn new(name: &'a CStr) -> Self {
+		Self {
+			name,
+			title: CSTR_EMPTY,
+			description: CSTR_EMPTY,
+			unit: crate::Unit::NONE,
+			capabilities: Capabilities::new(),
+			size: size_of::<crate::Int>() as i32,
+			range: None,
+			values: None,
+		}
+	}
+
+	pub fn title(&mut self, title: &'a CStr) -> &mut Self {
+		self.title = title;
+		self
+	}
+
+	pub fn description(&mut self, description: &'a CStr) -> &mut Self {
+		self.description = description;
+		self
+	}
+
+	pub fn unit(&mut self, unit: crate::Unit) -> &mut Self {
+		self.unit = unit;
+		self
+	}
+
+	pub fn capabilities(&mut self, capabilities: Capabilities) -> &mut Self {
+		self.capabilities = capabilities;
+		self
+	}
+
+	pub fn count(&mut self, count: usize) -> &mut Self {
+		// FIXME: assert count > 0 ?
+		// FIXME: assert count*sizeof(Int) <= i32::MAX ?
+		self.size = (count * size_of::<crate::Int>()) as i32;
+		self
+	}
+
+	pub fn range(&mut self, min: i32, max: i32, quant: i32) -> &mut Self {
+		let mut range = crate::Range::new();
+		range.min = crate::Int::new(min).as_word();
+		range.max = crate::Int::new(max).as_word();
+		range.quant = crate::Int::new(quant).as_word();
+		self.range = Some(range);
+		self.values = None;
+		self
+	}
+
+	pub fn values(&mut self, values: &'a [i32]) -> &mut Self {
+		self.values = Some(values);
+		self.range = None;
+		self
+	}
+
+	pub fn build(&self) -> OptionDescriptorBuf {
+		let mut buf = OptionDescriptorBuf::new(
+			self.name,
+			self.title,
+			self.description,
+		);
+		buf.raw.r#type = crate::ValueType::INT;
+		buf.raw.size = crate::Int::new(self.size);
+		buf.raw.unit = self.unit;
+		buf.raw.cap = self.capabilities.as_int();
+
+		if let Some(range) = self.range {
+			let range_box = Box::new(range);
+			let range_ptr: *const crate::Range = range_box.as_ref();
+			buf.constraint_range = Some(range_box);
+			buf.raw.constraint_type = crate::ConstraintType::RANGE;
+			buf.raw.constraint = range_ptr.cast();
+		} else if let Some(values) = self.values {
+			let word_list = &mut buf.constraint_word_list;
+			word_list.push(crate::Word::new(
+				values.len() as u32,
+			));
+			for value in values {
+				word_list.push(crate::Int::new(*value).as_word());
+			}
+			buf.raw.constraint_type = crate::ConstraintType::WORD_LIST;
+			buf.raw.constraint = word_list.as_ptr().cast();
+		}
+
+		buf
+	}
+}
+
+// }}}
+
+// FixedOptionBuilder {{{
+
+#[cfg(any(doc, feature = "alloc"))]
+pub struct FixedOptionBuilder<'a> {
+	name: &'a CStr,
+	title: &'a CStr,
+	description: &'a CStr,
+	unit: crate::Unit,
+	capabilities: Capabilities,
+	size: i32,
+	range: Option<crate::Range>,
+	values: Option<&'a [crate::Fixed]>,
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl<'a> FixedOptionBuilder<'a> {
+	pub fn new(name: &'a CStr) -> Self {
+		Self {
+			name,
+			title: CSTR_EMPTY,
+			description: CSTR_EMPTY,
+			unit: crate::Unit::NONE,
+			capabilities: Capabilities::new(),
+			size: size_of::<crate::Fixed>() as i32,
+			range: None,
+			values: None,
+		}
+	}
+
+	pub fn title(&mut self, title: &'a CStr) -> &mut Self {
+		self.title = title;
+		self
+	}
+
+	pub fn description(&mut self, description: &'a CStr) -> &mut Self {
+		self.description = description;
+		self
+	}
+
+	pub fn unit(&mut self, unit: crate::Unit) -> &mut Self {
+		self.unit = unit;
+		self
+	}
+
+	pub fn capabilities(&mut self, capabilities: Capabilities) -> &mut Self {
+		self.capabilities = capabilities;
+		self
+	}
+
+	pub fn count(&mut self, count: usize) -> &mut Self {
+		// FIXME: assert count > 0 ?
+		// FIXME: assert count*sizeof(Int) <= i32::MAX ?
+		self.size = (count * size_of::<crate::Fixed>()) as i32;
+		self
+	}
+
+	pub fn range(
+		&mut self,
+		min: crate::Fixed,
+		max: crate::Fixed,
+		quant: crate::Fixed,
+	) -> &mut Self {
+		let mut range = crate::Range::new();
+		range.min = min.as_word();
+		range.max = max.as_word();
+		range.quant = quant.as_word();
+		self.range = Some(range);
+		self.values = None;
+		self
+	}
+
+	pub fn values(&mut self, values: &'a [crate::Fixed]) -> &mut Self {
+		self.values = Some(values);
+		self.range = None;
+		self
+	}
+
+	pub fn build(&self) -> OptionDescriptorBuf {
+		let mut buf = OptionDescriptorBuf::new(
+			self.name,
+			self.title,
+			self.description,
+		);
+		buf.raw.r#type = crate::ValueType::FIXED;
+		buf.raw.size = crate::Int::new(self.size);
+		buf.raw.unit = self.unit;
+		buf.raw.cap = self.capabilities.as_int();
+
+		if let Some(range) = self.range {
+			let range_box = Box::new(range);
+			let range_ptr: *const crate::Range = range_box.as_ref();
+			buf.constraint_range = Some(range_box);
+			buf.raw.constraint_type = crate::ConstraintType::RANGE;
+			buf.raw.constraint = range_ptr.cast();
+		} else if let Some(values) = self.values {
+			let word_list = &mut buf.constraint_word_list;
+			word_list.push(crate::Word::new(
+				values.len() as u32,
+			));
+			for value in values {
+				word_list.push(value.as_word());
+			}
+			buf.raw.constraint_type = crate::ConstraintType::WORD_LIST;
+			buf.raw.constraint = word_list.as_ptr().cast();
+		}
+
+		buf
+	}
+}
+
+// }}}
+
+// StringOptionBuilder {{{
+
+#[cfg(any(doc, feature = "alloc"))]
+pub struct StringOptionBuilder<'a> {
+	name: &'a CStr,
+	title: &'a CStr,
+	description: &'a CStr,
+	unit: crate::Unit,
+	capabilities: Capabilities,
+	size: i32,
+	values: Option<&'a [&'a CStr]>,
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl<'a> StringOptionBuilder<'a> {
+	pub fn new(name: &'a CStr, size: usize) -> Self {
+		// FIXME: assert size <= i32::MAX
+		Self {
+			name,
+			size: size as i32,
+			title: CSTR_EMPTY,
+			description: CSTR_EMPTY,
+			unit: crate::Unit::NONE,
+			capabilities: Capabilities::new(),
+			values: None,
+		}
+	}
+
+	pub fn title(&mut self, title: &'a CStr) -> &mut Self {
+		self.title = title;
+		self
+	}
+
+	pub fn description(&mut self, description: &'a CStr) -> &mut Self {
+		self.description = description;
+		self
+	}
+
+	pub fn unit(&mut self, unit: crate::Unit) -> &mut Self {
+		self.unit = unit;
+		self
+	}
+
+	pub fn capabilities(&mut self, capabilities: Capabilities) -> &mut Self {
+		self.capabilities = capabilities;
+		self
+	}
+
+	pub fn values(&mut self, values: &'a [&'a CStr]) -> &mut Self {
+		self.values = Some(values);
+		self
+	}
+
+	pub fn build(&self) -> OptionDescriptorBuf {
+		let mut buf = OptionDescriptorBuf::new(
+			self.name,
+			self.title,
+			self.description,
+		);
+		buf.raw.r#type = crate::ValueType::STRING;
+		buf.raw.size = crate::Int::new(self.size);
+		buf.raw.unit = self.unit;
+		buf.raw.cap = self.capabilities.as_int();
+
+		if let Some(values) = self.values {
+			let string_list = &mut buf.constraint_string_list;
+			for value in values {
+				let owned = CString::from(*value);
+				string_list.push(crate::StringConst::from_c_str(&owned));
+				buf.strings.push(owned);
+			}
+			string_list.push(crate::StringConst::null());
+			buf.raw.constraint_type = crate::ConstraintType::STRING_LIST;
+			buf.raw.constraint = string_list.as_ptr().cast();
+		}
+
+		buf
+	}
+}
+
+// }}}
+
+// ButtonOptionBuilder {{{
+
+#[cfg(any(doc, feature = "alloc"))]
+pub struct ButtonOptionBuilder<'a> {
+	name: &'a CStr,
+	title: &'a CStr,
+	description: &'a CStr,
+	capabilities: Capabilities,
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl<'a> ButtonOptionBuilder<'a> {
+	pub fn new(name: &'a CStr) -> Self {
+		Self {
+			name,
+			title: CSTR_EMPTY,
+			description: CSTR_EMPTY,
+			capabilities: Capabilities::new(),
+		}
+	}
+
+	pub fn title(&mut self, title: &'a CStr) -> &mut Self {
+		self.title = title;
+		self
+	}
+
+	pub fn description(&mut self, description: &'a CStr) -> &mut Self {
+		self.description = description;
+		self
+	}
+
+	pub fn capabilities(&mut self, capabilities: Capabilities) -> &mut Self {
+		self.capabilities = capabilities;
+		self
+	}
+
+	pub fn build(&self) -> OptionDescriptorBuf {
+		let mut buf = OptionDescriptorBuf::new(
+			self.name,
+			self.title,
+			self.description,
+		);
+		buf.raw.r#type = crate::ValueType::BUTTON;
+		buf.raw.size = crate::Int::new(0);
+		buf.raw.cap = self.capabilities.as_int();
+		buf
+	}
+}
+
+// }}}
+
+// GroupOptionBuilder {{{
+
+#[cfg(any(doc, feature = "alloc"))]
+pub struct GroupOptionBuilder<'a> {
+	title: &'a CStr,
+	description: &'a CStr,
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl<'a> GroupOptionBuilder<'a> {
+	pub fn new() -> Self {
+		Self {
+			title: CSTR_EMPTY,
+			description: CSTR_EMPTY,
+		}
+	}
+
+	pub fn title(&mut self, title: &'a CStr) -> &mut Self {
+		self.title = title;
+		self
+	}
+
+	pub fn description(&mut self, description: &'a CStr) -> &mut Self {
+		self.description = description;
+		self
+	}
+
+	pub fn build(&self) -> OptionDescriptorBuf {
+		let mut buf = OptionDescriptorBuf::new(
+			CSTR_EMPTY,
+			self.title,
+			self.description,
+		);
+		buf.raw.r#type = crate::ValueType::GROUP;
+		buf.raw.size = crate::Int::new(0);
+		buf
+	}
+}
+
+// }}}
+
 // Capabilities {{{
 
 #[derive(Clone, Copy)]
@@ -327,6 +825,11 @@ impl fmt::Debug for Capabilities {
 impl Capabilities {
 	pub fn new() -> Capabilities {
 		Self { bits: 0 }
+	}
+
+	#[allow(dead_code)]
+	fn as_int(self) -> crate::Int {
+		crate::Int::new(self.bits as i32)
 	}
 }
 
