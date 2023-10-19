@@ -167,7 +167,7 @@ fn bool_option_builder() {
 		.description(CSTR_OPT_DESC)
 		.capabilities({
 			let mut caps = util::Capabilities::new();
-			// TODO
+			caps.set_emulated(true);
 			caps
 		})
 		.build();
@@ -190,7 +190,9 @@ fn bool_option_builder() {
 			"    value_type: SANE_TYPE_BOOL,\n",
 			"    unit: SANE_UNIT_NONE,\n",
 			"    size: 4,\n",
-			"    capabilities: Capabilities {},\n",
+			"    capabilities: Capabilities {\n",
+			"        SANE_CAP_EMULATED,\n",
+			"    },\n",
 			"    constraint: None,\n",
 			"}",
 		),
@@ -205,7 +207,7 @@ fn int_option_builder() {
 		.unit(sane::Unit::PIXEL)
 		.capabilities({
 			let mut caps = util::Capabilities::new();
-			// TODO
+			caps.set_emulated(true);
 			caps
 		})
 		.build();
@@ -229,7 +231,9 @@ fn int_option_builder() {
 			"    value_type: SANE_TYPE_INT,\n",
 			"    unit: SANE_UNIT_PIXEL,\n",
 			"    size: 4,\n",
-			"    capabilities: Capabilities {},\n",
+			"    capabilities: Capabilities {\n",
+			"        SANE_CAP_EMULATED,\n",
+			"    },\n",
 			"    constraint: None,\n",
 			"}",
 		),
@@ -295,7 +299,7 @@ fn fixed_option_builder() {
 		.unit(sane::Unit::PIXEL)
 		.capabilities({
 			let mut caps = util::Capabilities::new();
-			// TODO
+			caps.set_emulated(true);
 			caps
 		})
 		.build();
@@ -319,7 +323,9 @@ fn fixed_option_builder() {
 			"    value_type: SANE_TYPE_FIXED,\n",
 			"    unit: SANE_UNIT_PIXEL,\n",
 			"    size: 4,\n",
-			"    capabilities: Capabilities {},\n",
+			"    capabilities: Capabilities {\n",
+			"        SANE_CAP_EMULATED,\n",
+			"    },\n",
 			"    constraint: None,\n",
 			"}",
 		),
@@ -393,7 +399,7 @@ fn string_option_builder() {
 		.unit(sane::Unit::PIXEL)
 		.capabilities({
 			let mut caps = util::Capabilities::new();
-			// TODO
+			caps.set_emulated(true);
 			caps
 		})
 		.build();
@@ -417,7 +423,9 @@ fn string_option_builder() {
 			"    value_type: SANE_TYPE_STRING,\n",
 			"    unit: SANE_UNIT_PIXEL,\n",
 			"    size: 1234,\n",
-			"    capabilities: Capabilities {},\n",
+			"    capabilities: Capabilities {\n",
+			"        SANE_CAP_EMULATED,\n",
+			"    },\n",
 			"    constraint: None,\n",
 			"}",
 		),
@@ -455,7 +463,7 @@ fn button_option_builder() {
 		.description(CSTR_OPT_DESC)
 		.capabilities({
 			let mut caps = util::Capabilities::new();
-			// TODO
+			caps.set_emulated(true);
 			caps
 		})
 		.build();
@@ -479,7 +487,9 @@ fn button_option_builder() {
 			"    value_type: SANE_TYPE_BUTTON,\n",
 			"    unit: SANE_UNIT_NONE,\n",
 			"    size: 0,\n",
-			"    capabilities: Capabilities {},\n",
+			"    capabilities: Capabilities {\n",
+			"        SANE_CAP_EMULATED,\n",
+			"    },\n",
 			"    constraint: None,\n",
 			"}",
 		),
@@ -521,7 +531,59 @@ fn group_option_builder() {
 
 #[test]
 fn util_capabilities() {
-	let _ = util::Capabilities::new().clone();
+	assert!(util::Capabilities::SOFT_SELECT.can_soft_select());
+	assert!(util::Capabilities::SOFT_SELECT.can_soft_detect());
+
+	assert!(util::Capabilities::HARD_SELECT.can_hard_select());
+
+	// Interactions between SOFT_SELECT, HARD_SELECT, and SOFT_DETECT
+	{
+		let mut caps;
+
+		caps = util::Capabilities::SOFT_SELECT;
+		assert!(caps.can_soft_detect());
+		caps.set_soft_detect(false); // ignored for SOFT_SELECT
+		assert!(caps.can_soft_detect());
+
+		caps = util::Capabilities::HARD_SELECT;
+		assert!(!caps.can_soft_detect());
+		caps.set_soft_detect(true);
+		assert!(caps.can_soft_detect());
+		caps.set_soft_detect(false);
+		assert!(!caps.can_soft_detect());
+
+		caps = util::Capabilities::new();
+		assert!(!caps.can_soft_detect());
+		caps.set_soft_detect(true);
+		assert!(caps.can_soft_detect());
+		caps.set_soft_detect(false);
+		assert!(!caps.can_soft_detect());
+	}
+
+	// Bits are set appropriately
+	{
+		let mut caps;
+
+		caps = util::Capabilities::new();
+		assert!(!caps.is_emulated());
+		caps.set_emulated(true);
+		assert!(caps.is_emulated());
+
+		caps = util::Capabilities::new();
+		assert!(!caps.is_automatic());
+		caps.set_automatic(true);
+		assert!(caps.is_automatic());
+
+		caps = util::Capabilities::new();
+		assert!(caps.is_active());
+		caps.set_active(false);
+		assert!(!caps.is_active());
+
+		caps = util::Capabilities::new();
+		assert!(!caps.is_advanced());
+		caps.set_advanced(true);
+		assert!(caps.is_advanced());
+	}
 
 	fn cap(bit: u32) -> util::Capabilities {
 		unsafe { core::mem::transmute(bit) }

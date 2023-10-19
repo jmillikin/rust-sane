@@ -823,6 +823,14 @@ impl fmt::Debug for Capabilities {
 }
 
 impl Capabilities {
+	pub const SOFT_SELECT: Capabilities = Capabilities {
+		bits: crate::CAP_SOFT_SELECT | crate::CAP_SOFT_DETECT,
+	};
+
+	pub const HARD_SELECT: Capabilities = Capabilities {
+		bits: crate::CAP_HARD_SELECT,
+	};
+
 	pub fn new() -> Capabilities {
 		Self { bits: 0 }
 	}
@@ -830,6 +838,64 @@ impl Capabilities {
 	#[allow(dead_code)]
 	fn as_int(self) -> crate::Int {
 		crate::Int::new(self.bits as i32)
+	}
+
+	pub fn can_soft_select(self) -> bool {
+		self.bits & crate::CAP_SOFT_SELECT != 0
+	}
+
+	pub fn can_hard_select(self) -> bool {
+		self.bits & crate::CAP_HARD_SELECT != 0
+	}
+
+	pub fn can_soft_detect(self) -> bool {
+		self.bits & crate::CAP_SOFT_DETECT != 0
+	}
+
+	pub fn set_soft_detect(&mut self, soft_detect: bool) {
+		if !self.can_soft_select() {
+			self.set(crate::CAP_SOFT_DETECT, soft_detect)
+		}
+	}
+
+	pub fn is_emulated(self) -> bool {
+		self.bits & crate::CAP_EMULATED != 0
+	}
+
+	pub fn set_emulated(&mut self, emulated: bool) {
+		self.set(crate::CAP_EMULATED, emulated)
+	}
+
+	pub fn is_automatic(self) -> bool {
+		self.bits & crate::CAP_AUTOMATIC != 0
+	}
+
+	pub fn set_automatic(&mut self, automatic: bool) {
+		self.set(crate::CAP_AUTOMATIC, automatic)
+	}
+
+	pub fn is_active(self) -> bool {
+		self.bits & crate::CAP_INACTIVE == 0
+	}
+
+	pub fn set_active(&mut self, active: bool) {
+		self.set(crate::CAP_INACTIVE, !active)
+	}
+
+	pub fn is_advanced(self) -> bool {
+		self.bits & crate::CAP_ADVANCED != 0
+	}
+
+	pub fn set_advanced(&mut self, advanced: bool) {
+		self.set(crate::CAP_ADVANCED, advanced)
+	}
+
+	fn set(&mut self, mask: u32, set: bool) {
+		if set {
+			self.bits |= mask;
+		} else {
+			self.bits &= !mask;
+		}
 	}
 }
 
