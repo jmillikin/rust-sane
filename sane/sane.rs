@@ -166,6 +166,10 @@ impl Int {
 		Int(value as ffi::c_int)
 	}
 
+	pub const fn from_word(word: Word) -> Int {
+		Int(word.0 as ffi::c_int)
+	}
+
 	pub const fn as_i32(self) -> i32 {
 		self.0 as i32
 	}
@@ -219,6 +223,10 @@ impl Fixed {
 		let x = (whole as u16) as u32;
 		let y = fract_65536s as u32;
 		Fixed(((x << Self::SCALE_SHIFT) | y) as ffi::c_int)
+	}
+
+	pub const fn from_word(word: Word) -> Fixed {
+		Fixed(word.0 as ffi::c_int)
 	}
 
 	pub fn trunc(self) -> f64 {

@@ -162,6 +162,233 @@ fn util_capabilities() {
 }
 
 #[test]
+fn constraint_none() {
+	let constraint = unsafe {
+		util::Constraint::from_ptr(
+			sane::ValueType::INT,
+			sane::ConstraintType::NONE,
+			ptr::null()
+		).unwrap()
+	};
+	assert!(matches!(constraint, util::Constraint::None));
+
+	assert_eq!(format!("{:?}", constraint), "None");
+}
+
+#[test]
+fn constraint_int_range() {
+	let mut raw = sane::Range::new();
+	raw.min = sane::Int::new(-10).as_word();
+	raw.max = sane::Int::new(10).as_word();
+	raw.quant = sane::Int::new(1).as_word();
+
+	let constraint = unsafe {
+		util::Constraint::from_ptr(
+			sane::ValueType::INT,
+			sane::ConstraintType::RANGE,
+			(&raw as *const sane::Range).cast(),
+		).unwrap()
+	};
+
+	assert!(matches!(constraint, util::Constraint::IntRange(_)));
+	let range = match constraint {
+		util::Constraint::IntRange(range) => range,
+		_ => unreachable!(),
+	};
+	assert_eq!(range as *const sane::Range, &raw);
+
+	assert_eq!(
+		format!("{:#?}", constraint),
+		concat!(
+			"Range {\n",
+			"    min: SANE_Int(-10),\n",
+			"    max: SANE_Int(10),\n",
+			"    quant: SANE_Int(1),\n",
+			"}",
+		),
+	);
+}
+
+#[test]
+fn constraint_fixed_range() {
+	let mut raw = sane::Range::new();
+	raw.min = sane::Fixed::new(-10, 0).as_word();
+	raw.max = sane::Fixed::new(10, 0).as_word();
+	raw.quant = sane::Fixed::new(0, 32768).as_word();
+
+	let constraint = unsafe {
+		util::Constraint::from_ptr(
+			sane::ValueType::FIXED,
+			sane::ConstraintType::RANGE,
+			(&raw as *const sane::Range).cast(),
+		).unwrap()
+	};
+
+	assert!(matches!(constraint, util::Constraint::FixedRange(_)));
+	let range = match constraint {
+		util::Constraint::FixedRange(range) => range,
+		_ => unreachable!(),
+	};
+	assert_eq!(range as *const sane::Range, &raw);
+
+	assert_eq!(
+		format!("{:#?}", constraint),
+		concat!(
+			"Range {\n",
+			"    min: SANE_Fixed(-10.0),\n",
+			"    max: SANE_Fixed(10.0),\n",
+			"    quant: SANE_Fixed(0.5),\n",
+			"}",
+		),
+	);
+}
+
+#[test]
+fn constraint_int_list() {
+	let raw = [
+		sane::Word::new(3),
+		sane::Word::new(10),
+		sane::Word::new(20),
+		sane::Word::new(30),
+	];
+	let raw_ptr: *const sane::Word = raw.as_ptr();
+
+	let constraint = unsafe {
+		util::Constraint::from_ptr(
+			sane::ValueType::INT,
+			sane::ConstraintType::WORD_LIST,
+			raw_ptr.cast(),
+		).unwrap()
+	};
+
+	assert!(matches!(constraint, util::Constraint::IntList(_)));
+	let words = match constraint {
+		util::Constraint::IntList(words) => words,
+		_ => unreachable!(),
+	};
+	assert_eq!(words.as_ptr(), raw_ptr);
+
+	assert_eq!(
+		format!("{:?}", constraint),
+		"[SANE_Int(10), SANE_Int(20), SANE_Int(30)]",
+	);
+}
+
+#[test]
+fn constraint_fixed_list() {
+	let raw = [
+		sane::Word::new(3),
+		sane::Fixed::new(-10, 0).as_word(),
+		sane::Fixed::new(0, 0).as_word(),
+		sane::Fixed::new(10, 0).as_word(),
+	];
+	let raw_ptr: *const sane::Word = raw.as_ptr();
+
+	let constraint = unsafe {
+		util::Constraint::from_ptr(
+			sane::ValueType::FIXED,
+			sane::ConstraintType::WORD_LIST,
+			raw_ptr.cast(),
+		).unwrap()
+	};
+
+	assert!(matches!(constraint, util::Constraint::FixedList(_)));
+	let words = match constraint {
+		util::Constraint::FixedList(words) => words,
+		_ => unreachable!(),
+	};
+	assert_eq!(words.as_ptr(), raw_ptr);
+
+	assert_eq!(
+		format!("{:?}", constraint),
+		"[SANE_Fixed(-10.0), SANE_Fixed(0.0), SANE_Fixed(10.0)]",
+	);
+}
+
+#[test]
+fn constraint_string_list() {
+	let raw = [
+		cstr(b"aaa\x00").as_ptr(),
+		cstr(b"bbb\x00").as_ptr(),
+		cstr(b"ccc\x00").as_ptr(),
+		ptr::null(),
+	];
+	let raw_ptr: *const sane::StringConst = raw.as_ptr().cast();
+
+	let constraint = unsafe {
+		util::Constraint::from_ptr(
+			sane::ValueType::STRING,
+			sane::ConstraintType::STRING_LIST,
+			raw_ptr.cast(),
+		).unwrap()
+	};
+
+	assert!(matches!(constraint, util::Constraint::StringList(_)));
+	let strings = match constraint {
+		util::Constraint::StringList(strings) => strings,
+		_ => unreachable!(),
+	};
+	assert_eq!(strings.as_ptr(), raw_ptr);
+
+	assert_eq!(
+		format!("{:?}", constraint),
+		r#"["aaa", "bbb", "ccc"]"#,
+	);
+}
+
+#[test]
+fn constraint_invalid() {
+	let err = unsafe {
+		util::Constraint::from_ptr(
+			sane::ValueType::BOOL,
+			sane::ConstraintType::RANGE,
+			ptr::null()
+		).unwrap_err()
+	};
+	assert!(matches!(err, util::ConstraintError::TypeMismatch(
+		sane::ValueType::BOOL,
+		sane::ConstraintType::RANGE,
+	)));
+
+	let err = unsafe {
+		util::Constraint::from_ptr(
+			sane::ValueType::BOOL,
+			sane::ConstraintType::WORD_LIST,
+			ptr::null()
+		).unwrap_err()
+	};
+	assert!(matches!(err, util::ConstraintError::TypeMismatch(
+		sane::ValueType::BOOL,
+		sane::ConstraintType::WORD_LIST,
+	)));
+
+	let err = unsafe {
+		util::Constraint::from_ptr(
+			sane::ValueType::BOOL,
+			sane::ConstraintType::STRING_LIST,
+			ptr::null()
+		).unwrap_err()
+	};
+	assert!(matches!(err, util::ConstraintError::TypeMismatch(
+		sane::ValueType::BOOL,
+		sane::ConstraintType::STRING_LIST,
+	)));
+
+	const INVALID: sane::ConstraintType = unsafe {
+		core::mem::transmute(u32::MAX)
+	};
+
+	let err = unsafe {
+		util::Constraint::from_ptr(
+			sane::ValueType::BOOL,
+			INVALID,
+			ptr::null()
+		).unwrap_err()
+	};
+	assert!(matches!(err, util::ConstraintError::InvalidType(INVALID)));
+}
+
+#[test]
 fn util_word_list() {
 	let raw = [
 		sane::Word::new(3),

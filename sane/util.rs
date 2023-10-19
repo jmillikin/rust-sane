@@ -260,6 +260,121 @@ impl fmt::Debug for DebugCapabilityBit {
 
 // }}}
 
+// Constraint {{{
+
+#[non_exhaustive]
+#[derive(Copy, Clone)]
+pub enum Constraint<'a> {
+	None,
+	IntRange(&'a crate::Range),
+	FixedRange(&'a crate::Range),
+	IntList(WordList<'a>),
+	FixedList(WordList<'a>),
+	StringList(StringList<'a>),
+}
+
+#[non_exhaustive]
+#[derive(Copy, Clone, Debug)]
+pub enum ConstraintError {
+	InvalidType(crate::ConstraintType),
+	TypeMismatch(crate::ValueType, crate::ConstraintType),
+}
+
+impl<'a> Constraint<'a> {
+	pub unsafe fn from_ptr(
+		value_type: crate::ValueType,
+		constraint_type: crate::ConstraintType,
+		ptr: *const (),
+	) -> Result<Constraint<'a>, ConstraintError> {
+		use crate::ConstraintType as C;
+		use crate::ValueType as V;
+
+		match constraint_type {
+			C::NONE => Ok(Self::None),
+			C::RANGE => match value_type {
+				V::INT => Ok(Self::IntRange(
+					&*(ptr.cast())
+				)),
+				V::FIXED => Ok(Self::FixedRange(
+					&*(ptr.cast())
+				)),
+				_ => Err(ConstraintError::TypeMismatch(
+					value_type,
+					constraint_type,
+				)),
+			},
+			C::WORD_LIST => match value_type {
+				V::INT => Ok(Self::IntList(
+					WordList::from_ptr(ptr.cast())
+				)),
+				V::FIXED => Ok(Self::FixedList(
+					WordList::from_ptr(ptr.cast())
+				)),
+				_ => Err(ConstraintError::TypeMismatch(
+					value_type,
+					constraint_type,
+				)),
+			},
+			C::STRING_LIST => match value_type {
+				V::STRING => Ok(Self::StringList(
+					StringList::from_ptr(ptr.cast())
+				)),
+				_ => Err(ConstraintError::TypeMismatch(
+					value_type,
+					constraint_type,
+				)),
+			},
+			_ => Err(ConstraintError::InvalidType(constraint_type)),
+		}
+	}
+}
+
+impl fmt::Debug for Constraint<'_> {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		use crate::{Fixed, Int};
+		match self {
+			Constraint::None => f.write_str("None"),
+			Constraint::IntRange(range) => {
+				let mut dbg = f.debug_struct("Range");
+				dbg.field("min", &Int::from_word(range.min));
+				dbg.field("max", &Int::from_word(range.max));
+				dbg.field("quant", &Int::from_word(range.quant));
+				dbg.finish()
+			},
+			Constraint::FixedRange(range) => {
+				let mut dbg = f.debug_struct("Range");
+				dbg.field("min", &Fixed::from_word(range.min));
+				dbg.field("max", &Fixed::from_word(range.max));
+				dbg.field("quant", &Fixed::from_word(range.quant));
+				dbg.finish()
+			},
+			Constraint::IntList(values) => {
+				let mut dbg = f.debug_list();
+				for v in values {
+					dbg.entry(&Int::from_word(v));
+				}
+				dbg.finish()
+			},
+			Constraint::FixedList(values) => {
+				let mut dbg = f.debug_list();
+				for v in values {
+					dbg.entry(&Fixed::from_word(v));
+				}
+				dbg.finish()
+			},
+			Constraint::StringList(values) => {
+				let mut dbg = f.debug_list();
+				for v in values {
+					dbg.entry(&v);
+				}
+				dbg.finish()
+			},
+		}
+	}
+}
+
+// }}}
+
 // WordList {{{
 
 #[derive(Copy, Clone)]
@@ -270,6 +385,10 @@ pub struct WordList<'a> {
 impl<'a> WordList<'a> {
 	pub unsafe fn from_ptr(ptr: *const crate::Word) -> WordList<'a> {
 		WordList { words: &*ptr }
+	}
+
+	pub fn as_ptr(&self) -> *const crate::Word {
+		self.words
 	}
 
 	pub fn iter(&self) -> WordListIter<'a> {
@@ -335,6 +454,10 @@ pub struct StringList<'a> {
 impl<'a> StringList<'a> {
 	pub unsafe fn from_ptr(ptr: *const crate::StringConst) -> StringList<'a> {
 		StringList { strings: &*ptr }
+	}
+
+	pub fn as_ptr(&self) -> *const crate::StringConst {
+		self.strings
 	}
 
 	pub fn iter(&self) -> StringListIter<'a> {
