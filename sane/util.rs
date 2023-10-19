@@ -213,6 +213,95 @@ impl DevicesBuf {
 
 // }}}
 
+// OptionDescriptor {{{
+
+#[derive(Copy, Clone)]
+pub struct OptionDescriptor<'a> {
+	name: &'a CStr,
+	title: &'a CStr,
+	description: &'a CStr,
+	value_type: crate::ValueType,
+	unit: crate::Unit,
+	size: u32,
+	capabilities: Capabilities,
+	constraint: Constraint<'a>,
+}
+
+impl fmt::Debug for OptionDescriptor<'_> {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		f.debug_struct("OptionDescriptor")
+			.field("name", &self.name)
+			.field("title", &self.title)
+			.field("description", &self.description)
+			.field("value_type", &self.value_type)
+			.field("unit", &self.unit)
+			.field("size", &self.size)
+			.field("capabilities", &self.capabilities)
+			.field("constraint", &self.constraint)
+			.finish()
+	}
+}
+
+impl<'a> OptionDescriptor<'a> {
+	pub unsafe fn from_ptr(
+		ptr: *const crate::OptionDescriptor,
+	) -> OptionDescriptor<'a> {
+		let raw = &*ptr;
+		OptionDescriptor {
+			name: raw.name.to_c_str().unwrap_or(CSTR_EMPTY),
+			title: raw.title.to_c_str().unwrap_or(CSTR_EMPTY),
+			description: raw.desc.to_c_str().unwrap_or(CSTR_EMPTY),
+			value_type: raw.r#type,
+			unit: raw.unit,
+			size: raw.size.as_word().as_u32(),
+			capabilities: Capabilities {
+				bits: raw.cap.as_word().as_u32(),
+			},
+			constraint: Constraint::from_ptr(
+				raw.r#type,
+				raw.constraint_type,
+				raw.constraint,
+			).unwrap_or(Constraint::None),
+		}
+	}
+}
+
+impl OptionDescriptor<'_> {
+	pub fn name(&self) -> &CStr {
+		self.name
+	}
+
+	pub fn title(&self) -> &CStr {
+		self.title
+	}
+
+	pub fn description(&self) -> &CStr {
+		self.description
+	}
+
+	pub fn value_type(&self) -> crate::ValueType {
+		self.value_type
+	}
+
+	pub fn unit(&self) -> crate::Unit {
+		self.unit
+	}
+
+	pub fn size(&self) -> usize {
+		self.size as usize
+	}
+
+	pub fn capabilities(&self) -> Capabilities {
+		self.capabilities
+	}
+
+	pub fn constraint(&self) -> Constraint {
+		self.constraint
+	}
+}
+
+//}}}
+
 // Capabilities {{{
 
 #[derive(Clone, Copy)]

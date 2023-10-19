@@ -14,6 +14,7 @@
 // SPDX-License-Identifier: 0BSD
 
 use core::ffi::CStr;
+use core::mem::size_of;
 use core::ptr;
 
 use sane::StringConst;
@@ -29,6 +30,10 @@ const CSTR_DEV_NAME: &CStr = cstr(b"device-name\x00");
 const CSTR_DEV_VENDOR: &CStr = cstr(b"device-vendor\x00");
 const CSTR_DEV_MODEL: &CStr = cstr(b"device-model\x00");
 const CSTR_DEV_TYPE: &CStr = cstr(b"device-type\x00");
+
+const CSTR_OPT_NAME: &CStr = cstr(b"option-name\x00");
+const CSTR_OPT_TITLE: &CStr = cstr(b"option-title\x00");
+const CSTR_OPT_DESC: &CStr = cstr(b"option-description\x00");
 
 #[test]
 fn util_device() {
@@ -115,6 +120,44 @@ fn util_devices_buf() {
 
 	let devices_vec_2: Vec<_> = buf.devices().into_iter().collect();
 	assert_eq!(devices_vec_2.len(), 2);
+}
+
+#[test]
+fn util_option_descriptor() {
+	let mut raw = sane::OptionDescriptor::new();
+	raw.name = StringConst::from_c_str(CSTR_OPT_NAME);
+	raw.title = StringConst::from_c_str(CSTR_OPT_TITLE);
+	raw.desc = StringConst::from_c_str(CSTR_OPT_DESC);
+	raw.r#type = sane::ValueType::INT;
+	raw.unit = sane::Unit::PIXEL;
+	raw.size = sane::Int::new(size_of::<sane::Int>() as i32);
+
+	let option = unsafe { util::OptionDescriptor::from_ptr(&raw) };
+
+	assert_eq!(option.name(), CSTR_OPT_NAME);
+	assert_eq!(option.title(), CSTR_OPT_TITLE);
+	assert_eq!(option.description(), CSTR_OPT_DESC);
+	assert_eq!(option.value_type(), sane::ValueType::INT);
+	assert_eq!(option.unit(), sane::Unit::PIXEL);
+	assert_eq!(option.size(), size_of::<sane::Int>());
+	//assert_eq!(option.capabilities(), util::Capabilities::new());
+	assert!(matches!(option.constraint(), util::Constraint::None));
+
+	assert_eq!(
+		format!("{:#?}", option),
+		concat!(
+			"OptionDescriptor {\n",
+			"    name: \"option-name\",\n",
+			"    title: \"option-title\",\n",
+			"    description: \"option-description\",\n",
+			"    value_type: SANE_TYPE_INT,\n",
+			"    unit: SANE_UNIT_PIXEL,\n",
+			"    size: 4,\n",
+			"    capabilities: Capabilities {},\n",
+			"    constraint: None,\n",
+			"}",
+		),
+	);
 }
 
 #[test]
