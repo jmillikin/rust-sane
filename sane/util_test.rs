@@ -64,6 +64,25 @@ fn util_device() {
 }
 
 #[test]
+fn util_device_buf() {
+	let mut device = util::DeviceBuf::new(CSTR_DEV_NAME);
+	assert_eq!(device.name(), CSTR_DEV_NAME);
+
+	const CSTR_DEV_NAME_2: &CStr = cstr(b"device-name-2\x00");
+	device.set_name(CSTR_DEV_NAME_2);
+	assert_eq!(device.name(), CSTR_DEV_NAME_2);
+
+	device.set_vendor(CSTR_DEV_VENDOR);
+	assert_eq!(device.vendor(), CSTR_DEV_VENDOR);
+
+	device.set_model(CSTR_DEV_MODEL);
+	assert_eq!(device.model(), CSTR_DEV_MODEL);
+
+	device.set_kind(CSTR_DEV_TYPE);
+	assert_eq!(device.kind(), CSTR_DEV_TYPE);
+}
+
+#[test]
 fn util_devices_iter() {
 	let mut raw = sane::Device::new();
 	raw.name = StringConst::from_c_str(CSTR_DEV_NAME);
@@ -108,14 +127,18 @@ fn util_devices_iter() {
 fn util_devices_buf() {
 	let mut buf = util::DevicesBuf::new();
 
-	buf.add(CSTR_DEV_NAME, |dev| {
+	buf.push({
+		let mut dev = util::DeviceBuf::new(CSTR_DEV_NAME);
 		dev.set_vendor(CSTR_DEV_VENDOR);
 		dev.set_model(CSTR_DEV_MODEL);
 		dev.set_kind(CSTR_DEV_TYPE);
+		dev
 	});
 
 	const CSTR_DEV_NAME_2: &CStr = cstr(b"device-name-2\x00");
-	buf.add(CSTR_DEV_NAME_2, |_dev| {});
+	buf.push(util::DeviceBuf::new(CSTR_DEV_NAME_2));
+
+	assert_eq!(buf.len(), 2);
 
 	assert_eq!(
 		format!("{:#?}", buf),

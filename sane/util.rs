@@ -17,6 +17,7 @@
 
 #[cfg(any(doc, feature = "alloc"))]
 use alloc::{
+	borrow::Cow,
 	boxed::Box,
 	ffi::CString,
 	vec::Vec,
@@ -68,15 +69,6 @@ impl Device<'_> {
 }
 
 impl<'a> Device<'a> {
-	pub fn new(name: &'a CStr) -> Device<'a> {
-		Device {
-			name,
-			vendor: CSTR_EMPTY,
-			model: CSTR_EMPTY,
-			kind: CSTR_EMPTY,
-		}
-	}
-
 	pub unsafe fn from_ptr(ptr: *const crate::Device) -> Device<'a> {
 		let raw = &*ptr;
 		Device {
@@ -86,17 +78,62 @@ impl<'a> Device<'a> {
 			kind: raw.r#type.to_c_str().unwrap_or(CSTR_EMPTY),
 		}
 	}
+}
 
-	pub fn set_vendor(&mut self, vendor: &'a CStr) {
-		self.vendor = vendor;
+// }}}
+
+// DeviceBuf {{{
+
+#[cfg(any(doc, feature = "alloc"))]
+#[derive(Clone, Debug)]
+pub struct DeviceBuf {
+	name: CString,
+	vendor: Cow<'static, CStr>,
+	model: Cow<'static, CStr>,
+	kind: Cow<'static, CStr>,
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl DeviceBuf {
+	pub fn new(name: impl Into<CString>) -> DeviceBuf {
+		DeviceBuf {
+			name: name.into(),
+			vendor: Cow::Borrowed(CSTR_EMPTY),
+			model: Cow::Borrowed(CSTR_EMPTY),
+			kind: Cow::Borrowed(CSTR_EMPTY),
+		}
 	}
 
-	pub fn set_model(&mut self, model: &'a CStr) {
-		self.model = model;
+	pub fn name(&self) -> &CStr {
+		&self.name
 	}
 
-	pub fn set_kind(&mut self, kind: &'a CStr) {
-		self.kind = kind;
+	pub fn set_name(&mut self, name: impl Into<CString>) {
+		self.name = name.into();
+	}
+
+	pub fn vendor(&self) -> &CStr {
+		self.vendor.as_ref()
+	}
+
+	pub fn set_vendor(&mut self, vendor: impl Into<CString>) {
+		self.vendor = Cow::Owned(vendor.into());
+	}
+
+	pub fn model(&self) -> &CStr {
+		self.model.as_ref()
+	}
+
+	pub fn set_model(&mut self, model: impl Into<CString>) {
+		self.model = Cow::Owned(model.into());
+	}
+
+	pub fn kind(&self) -> &CStr {
+		self.kind.as_ref()
+	}
+
+	pub fn set_kind(&mut self, kind: impl Into<CString>) {
+		self.kind = Cow::Owned(kind.into());
 	}
 }
 
@@ -185,25 +222,26 @@ impl DevicesBuf {
 		}
 	}
 
-	pub fn add(&mut self, name: &CStr, f: impl FnOnce(&mut Device)) {
-		let mut dev = Device::new(name);
-		f(&mut dev);
+	pub fn len(&self) -> usize {
+		self.devices.len()
+	}
 
+	pub fn push(&mut self, dev: DeviceBuf) {
 		let cstr_empty_ptr = crate::StringConst::from_c_str(CSTR_EMPTY);
 
-		let mut take_cstr = |cstr: &CStr| -> crate::StringConst {
-			if cstr.is_empty() {
-				cstr_empty_ptr
-			} else {
-				let owned = CString::from(cstr);
-				let ptr = crate::StringConst::from_c_str(&owned);
-				self.strings.push(owned);
-				ptr
+		let mut take_cstr = |cow: Cow<CStr>| -> crate::StringConst {
+			if let Cow::Owned(cstr) = cow {
+				if !cstr.is_empty() {
+					let ptr = crate::StringConst::from_c_str(&cstr);
+					self.strings.push(cstr);
+					return ptr;
+				}
 			}
+			cstr_empty_ptr
 		};
 
 		let mut raw = crate::Device::new();
-		raw.name = take_cstr(dev.name);
+		raw.name = take_cstr(Cow::Owned(dev.name));
 		raw.vendor = take_cstr(dev.vendor);
 		raw.model = take_cstr(dev.model);
 		raw.r#type = take_cstr(dev.kind);
