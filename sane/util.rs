@@ -137,6 +137,41 @@ impl DeviceBuf {
 	}
 }
 
+#[cfg(any(doc, feature = "alloc"))]
+impl From<Device<'_>> for DeviceBuf {
+	fn from(dev: Device) -> DeviceBuf {
+		Self::from(&dev)
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl From<&Device<'_>> for DeviceBuf {
+	fn from(dev: &Device) -> DeviceBuf {
+		let vendor = if dev.vendor.is_empty() {
+			Cow::Borrowed(CSTR_EMPTY)
+		} else {
+			Cow::Owned(dev.vendor.into())
+		};
+		let model = if dev.model.is_empty() {
+			Cow::Borrowed(CSTR_EMPTY)
+		} else {
+			Cow::Owned(dev.model.into())
+		};
+		let kind = if dev.kind.is_empty() {
+			Cow::Borrowed(CSTR_EMPTY)
+		} else {
+			Cow::Owned(dev.kind.into())
+		};
+
+		DeviceBuf {
+			name: dev.name.into(),
+			vendor,
+			model,
+			kind,
+		}
+	}
+}
+
 // }}}
 
 // Devices {{{
@@ -201,6 +236,17 @@ pub struct DevicesBuf {
 	devices: Vec<Box<crate::Device>>,
 	device_ptrs: Vec<*const crate::Device>,
 	strings: Vec<CString>,
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl Clone for DevicesBuf {
+	fn clone(&self) -> Self {
+		let mut cloned = DevicesBuf::new();
+		for device in self.devices().iter() {
+			cloned.push(DeviceBuf::from(device));
+		}
+		cloned
+	}
 }
 
 #[cfg(any(doc, feature = "alloc"))]

@@ -177,6 +177,10 @@ fn util_devices_buf() {
 
 	let devices_vec_2: Vec<_> = buf.devices().into_iter().collect();
 	assert_eq!(devices_vec_2.len(), 2);
+
+	let cloned = buf.clone();
+	let devices_vec_3: Vec<_> = cloned.devices().iter().collect();
+	assert_eq!(devices_vec_3[0].name(), devices_vec[0].name());
 }
 
 #[test]
