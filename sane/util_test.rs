@@ -899,6 +899,11 @@ fn util_word_list() {
 	let word_list = unsafe { util::WordList::from_ptr(raw_ptr) };
 	let words: Vec<_> = word_list.into_iter().collect();
 
+	assert_eq!(
+		format!("{:?}", word_list),
+		format!("{:?}", words),
+	);
+
 	assert_eq!(words, vec![
 		sane::Word::new(10),
 		sane::Word::new(20),
@@ -918,6 +923,11 @@ fn util_string_list() {
 
 	let string_list = unsafe { util::StringList::from_ptr(raw_ptr) };
 	let strings: Vec<_> = string_list.into_iter().collect();
+
+	assert_eq!(
+		format!("{:?}", string_list),
+		format!("{:?}", strings),
+	);
 
 	assert_eq!(strings, vec![
 		cstr(b"aaa\x00"),

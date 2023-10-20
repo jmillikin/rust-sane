@@ -1020,26 +1020,16 @@ impl fmt::Debug for Constraint<'_> {
 				dbg.finish()
 			},
 			Constraint::IntList(values) => {
-				let mut dbg = f.debug_list();
-				for v in values {
-					dbg.entry(&Int::from_word(v));
-				}
-				dbg.finish()
+				f.debug_list()
+					.entries(values.iter().map(Int::from_word))
+					.finish()
 			},
 			Constraint::FixedList(values) => {
-				let mut dbg = f.debug_list();
-				for v in values {
-					dbg.entry(&Fixed::from_word(v));
-				}
-				dbg.finish()
+				f.debug_list()
+					.entries(values.iter().map(Fixed::from_word))
+					.finish()
 			},
-			Constraint::StringList(values) => {
-				let mut dbg = f.debug_list();
-				for v in values {
-					dbg.entry(&v);
-				}
-				dbg.finish()
-			},
+			Constraint::StringList(values) => values.fmt(f),
 		}
 	}
 }
@@ -1051,6 +1041,12 @@ impl fmt::Debug for Constraint<'_> {
 #[derive(Copy, Clone)]
 pub struct WordList<'a> {
 	words: &'a crate::Word,
+}
+
+impl fmt::Debug for WordList<'_> {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		f.debug_list().entries(self).finish()
+	}
 }
 
 impl<'a> WordList<'a> {
@@ -1120,6 +1116,12 @@ impl<'a> Iterator for WordListIter<'a> {
 #[derive(Copy, Clone)]
 pub struct StringList<'a> {
 	strings: &'a crate::StringConst,
+}
+
+impl fmt::Debug for StringList<'_> {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		f.debug_list().entries(self).finish()
+	}
 }
 
 impl<'a> StringList<'a> {
