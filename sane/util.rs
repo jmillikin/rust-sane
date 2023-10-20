@@ -108,6 +108,12 @@ pub struct Devices<'a> {
 	devices: &'a *const crate::Device,
 }
 
+impl fmt::Debug for Devices<'_> {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		f.debug_list().entries(self).finish()
+	}
+}
+
 impl<'a> Devices<'a> {
 	pub unsafe fn from_ptr(
 		ptr: *const *const crate::Device,
@@ -158,6 +164,13 @@ pub struct DevicesBuf {
 	devices: Vec<Box<crate::Device>>,
 	device_ptrs: Vec<*const crate::Device>,
 	strings: Vec<CString>,
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl fmt::Debug for DevicesBuf {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		self.devices().fmt(f)
+	}
 }
 
 #[cfg(any(doc, feature = "alloc"))]

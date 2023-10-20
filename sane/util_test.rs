@@ -74,6 +74,20 @@ fn util_devices_iter() {
 	let raw_devices: &[*const _] = &[&raw, ptr::null()];
 	let devices = unsafe { util::Devices::from_ptr(raw_devices.as_ptr()) };
 
+	assert_eq!(
+		format!("{:#?}", devices),
+		concat!(
+			"[\n",
+			"    Device {\n",
+			"        name: \"device-name\",\n",
+			"        vendor: \"device-vendor\",\n",
+			"        model: \"device-model\",\n",
+			"        kind: \"device-type\",\n",
+			"    },\n",
+			"]",
+		),
+	);
+
 	let devices_vec: Vec<_> = devices.into_iter().collect();
 	assert_eq!(devices_vec.len(), 1);
 
@@ -102,6 +116,26 @@ fn util_devices_buf() {
 
 	const CSTR_DEV_NAME_2: &CStr = cstr(b"device-name-2\x00");
 	buf.add(CSTR_DEV_NAME_2, |_dev| {});
+
+	assert_eq!(
+		format!("{:#?}", buf),
+		concat!(
+			"[\n",
+			"    Device {\n",
+			"        name: \"device-name\",\n",
+			"        vendor: \"device-vendor\",\n",
+			"        model: \"device-model\",\n",
+			"        kind: \"device-type\",\n",
+			"    },\n",
+			"    Device {\n",
+			"        name: \"device-name-2\",\n",
+			"        vendor: \"\",\n",
+			"        model: \"\",\n",
+			"        kind: \"\",\n",
+			"    },\n",
+			"]",
+		),
+	);
 
 	let devices = unsafe { util::Devices::from_ptr(buf.as_ptr()) };
 	let devices_vec: Vec<_> = devices.into_iter().collect();
