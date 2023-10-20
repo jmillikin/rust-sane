@@ -191,9 +191,9 @@ fn sane_status() {
 	assert_eq!(Status::GOOD, Status::GOOD);
 	assert_eq!(format!("{:?}", Status::GOOD), "SANE_STATUS_GOOD");
 
-	let status_unknown: Status = unsafe {
-		core::mem::transmute(0x12345678 as core::ffi::c_uint)
-	};
+	let status_unknown_word = Word::new(0x12345678);
+	let status_unknown = Status::from_word(status_unknown_word);
+	assert_eq!(status_unknown.as_word(), status_unknown_word);
 	assert_eq!(format!("{:?}", status_unknown), "SANE_Status(0x12345678)");
 }
 
@@ -243,9 +243,9 @@ fn sane_value_type() {
 	assert_eq!(ValueType::BOOL, ValueType::BOOL);
 	assert_eq!(format!("{:?}", ValueType::BOOL), "SANE_TYPE_BOOL");
 
-	let type_unknown: ValueType = unsafe {
-		core::mem::transmute(0x12345678 as core::ffi::c_uint)
-	};
+	let type_unknown_word = Word::new(0x12345678);
+	let type_unknown = ValueType::from_word(type_unknown_word);
+	assert_eq!(type_unknown.as_word(), type_unknown_word);
 	assert_eq!(format!("{:?}", type_unknown), "SANE_Value_Type(0x12345678)");
 }
 
@@ -254,9 +254,9 @@ fn sane_unit() {
 	assert_eq!(Unit::NONE, Unit::NONE);
 	assert_eq!(format!("{:?}", Unit::NONE), "SANE_UNIT_NONE");
 
-	let unit_unknown: Unit = unsafe {
-		core::mem::transmute(0x12345678 as core::ffi::c_uint)
-	};
+	let unit_unknown_word = Word::new(0x12345678);
+	let unit_unknown = Unit::from_word(unit_unknown_word);
+	assert_eq!(unit_unknown.as_word(), unit_unknown_word);
 	assert_eq!(format!("{:?}", unit_unknown), "SANE_Unit(0x12345678)");
 }
 
@@ -265,9 +265,9 @@ fn sane_constraint_type() {
 	assert_eq!(ConstraintType::NONE, ConstraintType::NONE);
 	assert_eq!(format!("{:?}", ConstraintType::NONE), "SANE_CONSTRAINT_NONE");
 
-	let type_unknown: ConstraintType = unsafe {
-		core::mem::transmute(0x12345678 as core::ffi::c_uint)
-	};
+	let type_unknown_word = Word::new(0x12345678);
+	let type_unknown = ConstraintType::from_word(type_unknown_word);
+	assert_eq!(type_unknown.as_word(), type_unknown_word);
 	assert_eq!(
 		format!("{:?}", type_unknown),
 		"SANE_Constraint_Type(0x12345678)",
@@ -299,9 +299,9 @@ fn sane_action() {
 	assert_eq!(Action::GET_VALUE, Action::GET_VALUE);
 	assert_eq!(format!("{:?}", Action::GET_VALUE), "SANE_ACTION_GET_VALUE");
 
-	let action_unknown: Action = unsafe {
-		core::mem::transmute(0x12345678 as core::ffi::c_uint)
-	};
+	let action_unknown_word = Word::new(0x12345678);
+	let action_unknown = Action::from_word(action_unknown_word);
+	assert_eq!(action_unknown.as_word(), action_unknown_word);
 	assert_eq!(format!("{:?}", action_unknown), "SANE_Action(0x12345678)");
 }
 
@@ -329,8 +329,8 @@ fn sane_frame() {
 	assert_eq!(Frame::GRAY, Frame::GRAY);
 	assert_eq!(format!("{:?}", Frame::GRAY), "SANE_FRAME_GRAY");
 
-	let frame_unknown: Frame = unsafe {
-		core::mem::transmute(0x12345678 as core::ffi::c_uint)
-	};
+	let frame_unknown_word = Word::new(0x12345678);
+	let frame_unknown = Frame::from_word(frame_unknown_word);
+	assert_eq!(frame_unknown.as_word(), frame_unknown_word);
 	assert_eq!(format!("{:?}", frame_unknown), "SANE_Frame(0x12345678)");
 }

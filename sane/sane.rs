@@ -399,6 +399,16 @@ impl fmt::Debug for Status {
 	}
 }
 
+impl Status {
+	pub const fn from_word(word: Word) -> Status {
+		Status(word.0)
+	}
+
+	pub const fn as_word(self) -> Word {
+		Word(self.0)
+	}
+}
+
 // }}}
 
 // [4.2.8] Device Descriptor Type {{{
@@ -535,6 +545,16 @@ impl fmt::Debug for ValueType {
 	}
 }
 
+impl ValueType {
+	pub const fn from_word(word: Word) -> ValueType {
+		ValueType(word.0)
+	}
+
+	pub const fn as_word(self) -> Word {
+		Word(self.0)
+	}
+}
+
 // }}}
 
 // [4.2.9.5] Option Value Unit {{{
@@ -583,6 +603,16 @@ impl fmt::Debug for Unit {
 			Some(s) => f.write_str(s),
 			_ => write!(f, "SANE_Unit({:#X})", self.0),
 		}
+	}
+}
+
+impl Unit {
+	pub const fn from_word(word: Word) -> Unit {
+		Unit(word.0)
+	}
+
+	pub const fn as_word(self) -> Word {
+		Word(self.0)
 	}
 }
 
@@ -647,6 +677,16 @@ impl fmt::Debug for ConstraintType {
 			Some(s) => f.write_str(s),
 			_ => write!(f, "SANE_Constraint_Type({:#X})", self.0),
 		}
+	}
+}
+
+impl ConstraintType {
+	pub const fn from_word(word: Word) -> ConstraintType {
+		ConstraintType(word.0)
+	}
+
+	pub const fn as_word(self) -> Word {
+		Word(self.0)
 	}
 }
 
@@ -793,6 +833,16 @@ impl fmt::Debug for Action {
 	}
 }
 
+impl Action {
+	pub const fn from_word(word: Word) -> Action {
+		Action(word.0)
+	}
+
+	pub const fn as_word(self) -> Word {
+		Word(self.0)
+	}
+}
+
 /// `SANE_INFO_INEXACT`
 pub const INFO_INEXACT: u32 = 1 << 0;
 
@@ -878,6 +928,16 @@ impl fmt::Debug for Frame {
 			Some(s) => f.write_str(s),
 			_ => write!(f, "SANE_Frame({:#X})", self.0),
 		}
+	}
+}
+
+impl Frame {
+	pub const fn from_word(word: Word) -> Frame {
+		Frame(word.0)
+	}
+
+	pub const fn as_word(self) -> Word {
+		Word(self.0)
 	}
 }
 
