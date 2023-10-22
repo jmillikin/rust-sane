@@ -30,20 +30,20 @@ use sane::net::io::{
 macro_rules! decode_ok {
 	($bytes:expr) => {{
 		let mut cursor = std::io::Cursor::new($bytes.to_vec());
-		let mut decoder = sane::net::io::Codec::BINARY_V3.decoder(&mut cursor);
+		let mut reader = sane::net::io::Codec::BINARY_V3.reader(&mut cursor);
 
 		use sane::net::io::Decode;
-		Decode::decode(&mut decoder).unwrap()
+		Decode::decode(&mut reader).unwrap()
 	}};
 }
 
 macro_rules! decode_err {
 	($type:ty, $bytes:expr) => {{
 		let mut cursor = std::io::Cursor::new($bytes.to_vec());
-		let mut decoder = sane::net::io::Codec::BINARY_V3.decoder(&mut cursor);
+		let mut reader = sane::net::io::Codec::BINARY_V3.reader(&mut cursor);
 
 		use sane::net::io::Decode;
-		<$type>::decode(&mut decoder).unwrap_err()
+		<$type>::decode(&mut reader).unwrap_err()
 	}};
 }
 
@@ -61,10 +61,10 @@ macro_rules! encode_ok {
 	($value:expr) => {{
 		let mut bytes = Vec::new();
 		let mut cursor = std::io::Cursor::new(&mut bytes);
-		let mut encoder = sane::net::io::Codec::BINARY_V3.encoder(&mut cursor);
+		let mut writer = sane::net::io::Codec::BINARY_V3.writer(&mut cursor);
 
 		use sane::net::io::Encode;
-		$value.encode(&mut encoder).unwrap();
+		$value.encode(&mut writer).unwrap();
 		bytes
 	}}
 }

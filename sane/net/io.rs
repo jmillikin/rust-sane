@@ -13,6 +13,8 @@
 //
 // SPDX-License-Identifier: 0BSD
 
+use crate::Word;
+
 // Read {{{
 
 pub trait Read {
@@ -96,12 +98,12 @@ pub struct Codec {
 impl Codec {
 	pub const BINARY_V3: Codec = Codec { _p: () };
 
-	pub fn decoder<'a, R>(&self, r: &'a mut R) -> Decoder<'a, R> {
-		Decoder { r }
+	pub fn reader<'a, R>(&self, r: &'a mut R) -> Reader<'a, R> {
+		Reader { r }
 	}
 
-	pub fn encoder<'a, W>(&self, w: &'a mut W) -> Encoder<'a, W> {
-		Encoder { w }
+	pub fn writer<'a, W>(&self, w: &'a mut W) -> Writer<'a, W> {
+		Writer { w }
 	}
 }
 
@@ -111,24 +113,14 @@ impl Codec {
 
 pub trait Decode: Sized {
 	fn decode<R: Read>(
-		decoder: &mut Decoder<R>,
+		reader: &mut Reader<R>,
 	) -> Result<Self, DecodeError<R::Error>>;
-}
-
-pub struct Decoder<'a, R> {
-	r: &'a mut R,
-}
-
-impl<R: Read> Decoder<'_, R> {
-	fn read(&mut self, buf: &mut [u8]) -> Result<(), DecodeError<R::Error>> {
-		self.r.read_exact(buf).map_err(|e| DecodeError::IoError(e))
-	}
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum DecodeError<IoError> {
-	InvalidBool(crate::Word),
+	InvalidBool(Word),
 	IoError(IoError),
 }
 
@@ -139,18 +131,8 @@ pub enum DecodeError<IoError> {
 pub trait Encode {
 	fn encode<W: Write>(
 		&self,
-		encoder: &mut Encoder<W>,
+		writer: &mut Writer<W>,
 	) -> Result<(), EncodeError<W::Error>>;
-}
-
-pub struct Encoder<'a, W> {
-	w: &'a mut W,
-}
-
-impl<W: Write> Encoder<'_, W> {
-	fn write(&mut self, buf: &[u8]) -> Result<(), EncodeError<W::Error>> {
-		self.w.write_all(buf).map_err(|e| EncodeError::IoError(e))
-	}
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -161,39 +143,78 @@ pub enum EncodeError<IoError> {
 
 // }}}
 
+// Reader {{{
+
+pub struct Reader<'a, R> {
+	r: &'a mut R,
+}
+
+impl<R: Read> Reader<'_, R> {
+	fn read_bytes(
+		&mut self,
+		buf: &mut [u8],
+	) -> Result<(), DecodeError<R::Error>> {
+		self.r.read_exact(buf).map_err(|e| DecodeError::IoError(e))
+	}
+}
+
+// }}}
+
+// Writer {{{
+
+pub struct Writer<'a, W> {
+	w: &'a mut W,
+}
+
+impl<W: Write> Writer<'_, W> {
+	fn write_bytes(&mut self, buf: &[u8]) -> Result<(), EncodeError<W::Error>> {
+		self.w.write_all(buf).map_err(|e| EncodeError::IoError(e))
+	}
+}
+
+// }}}
+
 // [5.1.1] Primitive Data Types {{{
 
-impl Decode for crate::Word {
-	fn decode<R: Read>(d: &mut Decoder<R>) -> Result<Self, DecodeError<R::Error>> {
+impl Decode for Word {
+	fn decode<R: Read>(
+		r: &mut Reader<R>,
+	) -> Result<Self, DecodeError<R::Error>> {
 		let mut bytes = [0u8; 4];
-		d.read(&mut bytes)?;
+		r.read_bytes(&mut bytes)?;
 		Ok(Self::new(u32::from_be_bytes(bytes)))
 	}
 }
 
-impl Encode for crate::Word {
-	fn encode<W: Write>(&self, e: &mut Encoder<W>) -> Result<(), EncodeError<W::Error>> {
+impl Encode for Word {
+	fn encode<W: Write>(
+		&self,
+		w: &mut Writer<W>,
+	) -> Result<(), EncodeError<W::Error>> {
 		let bytes = self.as_u32().to_be_bytes();
-		e.write(&bytes)
+		w.write_bytes(&bytes)
 	}
 }
 
 impl Decode for crate::Bool {
-	fn decode<R: Read>(d: &mut Decoder<R>) -> Result<Self, DecodeError<R::Error>> {
-		let word = crate::Word::decode(d)?;
-		if word.as_u32() == 0 {
-			return Ok(Self::FALSE);
+	fn decode<R: Read>(
+		r: &mut Reader<R>,
+	) -> Result<Self, DecodeError<R::Error>> {
+		let word = Word::decode(r)?;
+		match word.as_u32() {
+			0 => Ok(Self::FALSE),
+			1 => Ok(Self::TRUE),
+			_ => Err(DecodeError::InvalidBool(word)),
 		}
-		if word.as_u32() == 1 {
-			return Ok(Self::TRUE);
-		}
-		Err(DecodeError::InvalidBool(word))
 	}
 }
 
 impl Encode for crate::Bool {
-	fn encode<W: Write>(&self, e: &mut Encoder<W>) -> Result<(), EncodeError<W::Error>> {
-		self.as_word().encode(e)
+	fn encode<W: Write>(
+		&self,
+		w: &mut Writer<W>,
+	) -> Result<(), EncodeError<W::Error>> {
+		self.as_word().encode(w)
 	}
 }
 
@@ -201,18 +222,18 @@ macro_rules! decode_encode_as_word {
 	($type:ty) => {
 		impl Decode for $type {
 			fn decode<R: Read>(
-				d: &mut Decoder<R>,
+				r: &mut Reader<R>,
 			) -> Result<Self, DecodeError<R::Error>> {
-				Ok(Self::from_word(crate::Word::decode(d)?))
+				Ok(Self::from_word(Word::decode(r)?))
 			}
 		}
 
 		impl Encode for $type {
 			fn encode<W: Write>(
 				&self,
-				e: &mut Encoder<W>,
+				w: &mut Writer<W>,
 			) -> Result<(), EncodeError<W::Error>> {
-				self.as_word().encode(e)
+				self.as_word().encode(w)
 			}
 		}
 	};
