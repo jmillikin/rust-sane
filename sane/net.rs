@@ -17,6 +17,8 @@ use core::fmt;
 
 use crate::Word;
 
+pub mod io;
+
 // ByteOrder {{{
 
 /// `SANE_Net_Byte_Order`

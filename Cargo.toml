@@ -15,14 +15,16 @@ categories = [
 include = [
 	"/LICENSE.txt",
 	"/sane/*.rs",
+	"/sane/net/*.rs",
 ]
 
 [lib]
 path = "sane/sane.rs"
 
 [features]
-default = ["alloc"]
+default = ["std"]
 alloc = []
+std = ["alloc"]
 
 [[test]]
 name = "net_test"

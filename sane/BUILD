@@ -12,10 +12,14 @@ rust_library(
     name = "sane",
     srcs = [
         "net.rs",
+        "net/io.rs",
         "sane.rs",
         "util.rs",
     ],
-    crate_features = ["alloc"],
+    crate_features = [
+        "alloc",
+        "std",
+    ],
     edition = "2018",
 )
 

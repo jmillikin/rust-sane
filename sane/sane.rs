@@ -13,7 +13,7 @@
 //
 // SPDX-License-Identifier: 0BSD
 
-#![no_std]
+#![cfg_attr(not(any(doc, feature = "std")), no_std)]
 
 #[cfg(any(doc, feature = "alloc"))]
 extern crate alloc;
