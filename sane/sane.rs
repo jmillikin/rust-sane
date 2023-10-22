@@ -24,6 +24,7 @@ use core::mem;
 use core::mem::size_of;
 use core::ptr;
 
+pub mod net;
 pub mod util;
 
 type OutPtr<T> = *mut mem::MaybeUninit<T>;

@@ -11,11 +11,20 @@ package(default_visibility = ["//visibility:public"])
 rust_library(
     name = "sane",
     srcs = [
+        "net.rs",
         "sane.rs",
         "util.rs",
     ],
     crate_features = ["alloc"],
     edition = "2018",
+)
+
+rust_test(
+    name = "net_test",
+    size = "small",
+    srcs = ["net_test.rs"],
+    edition = "2018",
+    deps = [":sane"],
 )
 
 rust_test(

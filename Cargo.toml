@@ -25,6 +25,10 @@ default = ["alloc"]
 alloc = []
 
 [[test]]
+name = "net_test"
+path = "sane/net_test.rs"
+
+[[test]]
 name = "sane_test"
 path = "sane/sane_test.rs"
 
