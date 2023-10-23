@@ -130,16 +130,19 @@ pub trait Decode: Sized {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DecodeError<IoError> {
-	kind: DecodeErrorKind<IoError>,
+	pub(crate) kind: DecodeErrorKind<IoError>,
 }
 
 #[allow(dead_code)]
 #[derive(Clone, Debug, Eq, PartialEq)]
-enum DecodeErrorKind<IoError> {
+pub(crate) enum DecodeErrorKind<IoError> {
 	SizeOverflow(u32),
 	TryReserveError(usize),
 	InvalidString,
 	InvalidBool(Word),
+	InvalidValueType(crate::ValueType),
+	InvalidConstraint(crate::ValueType, crate::ConstraintType),
+	NullPtr,
 	IoError(IoError),
 }
 
@@ -164,12 +167,12 @@ pub trait Encode {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct EncodeError<IoError> {
-	kind: EncodeErrorKind<IoError>,
+	pub(crate) kind: EncodeErrorKind<IoError>,
 }
 
 #[allow(dead_code)]
 #[derive(Clone, Debug, Eq, PartialEq)]
-enum EncodeErrorKind<IoError> {
+pub(crate) enum EncodeErrorKind<IoError> {
 	SizeOverflow(usize),
 	IoError(IoError),
 }
@@ -199,7 +202,7 @@ impl<R: Read> Reader<'_, R> {
 	}
 
 	#[cfg(any(doc, feature = "alloc"))]
-	fn read_size(&mut self) -> Result<usize, DecodeError<R::Error>> {
+	pub(crate) fn read_size(&mut self) -> Result<usize, DecodeError<R::Error>> {
 		let size = Word::decode(self)?.as_u32();
 		match usize::try_from(size) {
 			Ok(size) => Ok(size),
@@ -207,6 +210,17 @@ impl<R: Read> Reader<'_, R> {
 				kind: DecodeErrorKind::SizeOverflow(size),
 			}),
 		}
+	}
+
+	#[cfg(any(doc, feature = "alloc"))]
+	pub(crate) fn read_ptr<T: Decode>(
+		&mut self
+	) -> Result<Option<T>, DecodeError<R::Error>> {
+		let is_null = crate::Bool::decode(self)?;
+		if is_null == crate::Bool::TRUE {
+			return Ok(None);
+		}
+		Ok(Some(T::decode(self)?))
 	}
 }
 
@@ -223,7 +237,7 @@ impl<W: Write> Writer<'_, W> {
 		self.w.write_all(buf).map_err(|e| EncodeError::io_err(e))
 	}
 
-	pub fn write_size(
+	pub(crate) fn write_size(
 		&mut self,
 		size: usize,
 	) -> Result<(), EncodeError<W::Error>> {
@@ -232,6 +246,19 @@ impl<W: Write> Writer<'_, W> {
 			Err(_) => Err(EncodeError {
 				kind: EncodeErrorKind::SizeOverflow(size),
 			}),
+		}
+	}
+
+	pub(crate) fn write_ptr<T: Encode>(
+		&mut self,
+		value: Option<&T>,
+	) -> Result<(), EncodeError<W::Error>> {
+		match value {
+			None => crate::Bool::TRUE.encode(self),
+			Some(value) => {
+				crate::Bool::FALSE.encode(self)?;
+				value.encode(self)
+			},
 		}
 	}
 }

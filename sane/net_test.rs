@@ -41,6 +41,10 @@ const CSTR_DEV_VENDOR: &CStr = cstr(b"device-vendor\x00");
 const CSTR_DEV_MODEL: &CStr = cstr(b"device-model\x00");
 const CSTR_DEV_TYPE: &CStr = cstr(b"device-type\x00");
 
+const CSTR_OPT_NAME: &CStr = cstr(b"option-name\x00");
+const CSTR_OPT_TITLE: &CStr = cstr(b"option-title\x00");
+const CSTR_OPT_DESC: &CStr = cstr(b"option-description\x00");
+
 macro_rules! decode_ok {
 	($bytes:expr) => {{
 		let mut cursor = std::io::Cursor::new($bytes.to_vec());
@@ -333,4 +337,378 @@ fn util_device() {
 
 	let decoded_buf: util::DeviceBuf = decode_ok!(bytes);
 	assert_eq!(device_buf.to_device(), decoded_buf.to_device());
+}
+
+#[test]
+fn util_option_descriptor_bool() {
+	let option_buf = util::BoolOptionBuilder::new(CSTR_OPT_NAME)
+		.title(CSTR_OPT_TITLE)
+		.description(CSTR_OPT_DESC)
+		.capabilities(util::Capabilities::SOFT_SELECT)
+		.build();
+
+	let bytes = encode_ok!(&option_buf);
+	assert_eq!(bytes, concat_bytes_!(
+		[0, 0, 0, 12],
+		b"option-name\x00",
+		[0, 0, 0, 13],
+		b"option-title\x00",
+		[0, 0, 0, 19],
+		b"option-description\x00",
+
+		[0, 0, 0, 0],     // ValueType::BOOL
+		[0, 0, 0, 0],     // Unit::NONE
+		[0, 0, 0, 4],     // size_of::<Bool>()
+		[0, 0, 0, 0b101], // CAP_SOFT_SELECT | CAP_SOFT_DETECT
+		[0, 0, 0, 0],     // ConstraintType::NONE
+	));
+
+	let decoded_buf: util::OptionDescriptorBuf = decode_ok!(bytes);
+	assert_eq!(
+		option_buf.option_descriptor(),
+		decoded_buf.option_descriptor(),
+	);
+}
+
+#[test]
+fn util_option_descriptor_int() {
+	let option_buf = util::IntOptionBuilder::new(CSTR_OPT_NAME)
+		.title(CSTR_OPT_TITLE)
+		.description(CSTR_OPT_DESC)
+		.unit(sane::Unit::PIXEL)
+		.capabilities(util::Capabilities::SOFT_SELECT)
+		.build();
+
+	let bytes = encode_ok!(&option_buf);
+	assert_eq!(bytes, concat_bytes_!(
+		[0, 0, 0, 12],
+		b"option-name\x00",
+		[0, 0, 0, 13],
+		b"option-title\x00",
+		[0, 0, 0, 19],
+		b"option-description\x00",
+
+		[0, 0, 0, 1],     // ValueType::INT
+		[0, 0, 0, 1],     // Unit::PIXEL
+		[0, 0, 0, 4],     // size_of::<Int>()
+		[0, 0, 0, 0b101], // CAP_SOFT_SELECT | CAP_SOFT_DETECT
+		[0, 0, 0, 0],     // ConstraintType::NONE
+	));
+
+	let decoded_buf: util::OptionDescriptorBuf = decode_ok!(bytes);
+	assert_eq!(
+		option_buf.option_descriptor(),
+		decoded_buf.option_descriptor(),
+	);
+}
+
+#[test]
+fn util_option_descriptor_int_range() {
+	let option_buf = util::IntOptionBuilder::new(CSTR_OPT_NAME)
+		.range(0x11111111, 0x22222222, 0x33333333)
+		.build();
+
+	let bytes = encode_ok!(&option_buf);
+	assert_eq!(bytes, concat_bytes_!(
+		[0, 0, 0, 12],
+		b"option-name\x00",
+		[0, 0, 0, 1],
+		b"\x00",
+		[0, 0, 0, 1],
+		b"\x00",
+		[0, 0, 0, 1],
+		[0, 0, 0, 0],
+		[0, 0, 0, 4],
+		[0, 0, 0, 0],
+
+		[0, 0, 0, 1],             // ConstraintType::RANGE
+		[0, 0, 0, 0],             // is_null
+		[0x11, 0x11, 0x11, 0x11], // range.min
+		[0x22, 0x22, 0x22, 0x22], // range.max
+		[0x33, 0x33, 0x33, 0x33], // range.quant
+	));
+
+	let decoded_buf: util::OptionDescriptorBuf = decode_ok!(bytes);
+	assert_eq!(
+		option_buf.option_descriptor(),
+		decoded_buf.option_descriptor(),
+	);
+}
+
+#[test]
+fn util_option_descriptor_int_enum() {
+	let values = [
+		0x11111111,
+		0x22222222,
+		0x33333333,
+	];
+	let option_buf = util::IntOptionBuilder::new(CSTR_OPT_NAME)
+		.values(values)
+		.build();
+
+	let bytes = encode_ok!(&option_buf);
+	assert_eq!(bytes, concat_bytes_!(
+		[0, 0, 0, 12],
+		b"option-name\x00",
+		[0, 0, 0, 1],
+		b"\x00",
+		[0, 0, 0, 1],
+		b"\x00",
+		[0, 0, 0, 1],
+		[0, 0, 0, 0],
+		[0, 0, 0, 4],
+		[0, 0, 0, 0],
+
+		[0, 0, 0, 2],             // ConstraintType::WORD_LIST
+		[0, 0, 0, 4],             // words.len() + 1
+		[0, 0, 0, 3],             // words.len()
+		[0x11, 0x11, 0x11, 0x11], // words[0]
+		[0x22, 0x22, 0x22, 0x22], // words[1]
+		[0x33, 0x33, 0x33, 0x33], // words[2]
+	));
+
+	let decoded_buf: util::OptionDescriptorBuf = decode_ok!(bytes);
+	assert_eq!(
+		option_buf.option_descriptor(),
+		decoded_buf.option_descriptor(),
+	);
+}
+
+#[test]
+fn util_option_descriptor_fixed() {
+	let option_buf = util::FixedOptionBuilder::new(CSTR_OPT_NAME)
+		.title(CSTR_OPT_TITLE)
+		.description(CSTR_OPT_DESC)
+		.unit(sane::Unit::PIXEL)
+		.capabilities(util::Capabilities::SOFT_SELECT)
+		.build();
+
+	let bytes = encode_ok!(&option_buf);
+	assert_eq!(bytes, concat_bytes_!(
+		[0, 0, 0, 12],
+		b"option-name\x00",
+		[0, 0, 0, 13],
+		b"option-title\x00",
+		[0, 0, 0, 19],
+		b"option-description\x00",
+
+		[0, 0, 0, 2],     // ValueType::FIXED
+		[0, 0, 0, 1],     // Unit::PIXEL
+		[0, 0, 0, 4],     // size_of::<Fixed>()
+		[0, 0, 0, 0b101], // CAP_SOFT_SELECT | CAP_SOFT_DETECT
+		[0, 0, 0, 0],     // ConstraintType::NONE
+	));
+
+	let decoded_buf: util::OptionDescriptorBuf = decode_ok!(bytes);
+	assert_eq!(
+		option_buf.option_descriptor(),
+		decoded_buf.option_descriptor(),
+	);
+}
+
+#[test]
+fn util_option_descriptor_fixed_range() {
+	let range_min = sane::Fixed::new(0x11, 0x22);
+	let range_max = sane::Fixed::new(0x33, 0x44);
+	let range_quant = sane::Fixed::new(0x55, 0x66);
+	let option_buf = util::FixedOptionBuilder::new(CSTR_OPT_NAME)
+		.range(range_min, range_max, range_quant)
+		.build();
+
+	let bytes = encode_ok!(&option_buf);
+	assert_eq!(bytes, concat_bytes_!(
+		[0, 0, 0, 12],
+		b"option-name\x00",
+		[0, 0, 0, 1],
+		b"\x00",
+		[0, 0, 0, 1],
+		b"\x00",
+		[0, 0, 0, 2],
+		[0, 0, 0, 0],
+		[0, 0, 0, 4],
+		[0, 0, 0, 0],
+
+		[0, 0, 0, 1],       // ConstraintType::RANGE
+		[0, 0, 0, 0],       // is_null
+		[0, 0x11, 0, 0x22], // range.min
+		[0, 0x33, 0, 0x44], // range.max
+		[0, 0x55, 0, 0x66], // range.quant
+	));
+
+	let decoded_buf: util::OptionDescriptorBuf = decode_ok!(bytes);
+	assert_eq!(
+		option_buf.option_descriptor(),
+		decoded_buf.option_descriptor(),
+	);
+}
+
+#[test]
+fn util_option_descriptor_fixed_enum() {
+	let values = [
+		sane::Fixed::new(0x11, 0x22),
+		sane::Fixed::new(0x33, 0x44),
+		sane::Fixed::new(0x55, 0x66),
+	];
+	let option_buf = util::FixedOptionBuilder::new(CSTR_OPT_NAME)
+		.values(&values)
+		.build();
+
+	let bytes = encode_ok!(&option_buf);
+	assert_eq!(bytes, concat_bytes_!(
+		[0, 0, 0, 12],
+		b"option-name\x00",
+		[0, 0, 0, 1],
+		b"\x00",
+		[0, 0, 0, 1],
+		b"\x00",
+		[0, 0, 0, 2],
+		[0, 0, 0, 0],
+		[0, 0, 0, 4],
+		[0, 0, 0, 0],
+
+		[0, 0, 0, 2],       // ConstraintType::WORD_LIST
+		[0, 0, 0, 4],       // words.len() + 1
+		[0, 0, 0, 3],       // words.len()
+		[0, 0x11, 0, 0x22], // words[0]
+		[0, 0x33, 0, 0x44], // words[1]
+		[0, 0x55, 0, 0x66], // words[2]
+	));
+
+	let decoded_buf: util::OptionDescriptorBuf = decode_ok!(bytes);
+	assert_eq!(
+		option_buf.option_descriptor(),
+		decoded_buf.option_descriptor(),
+	);
+}
+
+#[test]
+fn util_option_descriptor_string() {
+	let option_buf = util::StringOptionBuilder::new(CSTR_OPT_NAME, 123)
+		.title(CSTR_OPT_TITLE)
+		.description(CSTR_OPT_DESC)
+		.unit(sane::Unit::PIXEL)
+		.capabilities(util::Capabilities::SOFT_SELECT)
+		.build();
+
+	let bytes = encode_ok!(&option_buf);
+	assert_eq!(bytes, concat_bytes_!(
+		[0, 0, 0, 12],
+		b"option-name\x00",
+		[0, 0, 0, 13],
+		b"option-title\x00",
+		[0, 0, 0, 19],
+		b"option-description\x00",
+
+		[0, 0, 0, 3],     // ValueType::STRING
+		[0, 0, 0, 1],     // Unit::PIXEL
+		[0, 0, 0, 123],   // size=123 (passed to `new()`)
+		[0, 0, 0, 0b101], // CAP_SOFT_SELECT | CAP_SOFT_DETECT
+		[0, 0, 0, 0],     // ConstraintType::NONE
+	));
+
+	let decoded_buf: util::OptionDescriptorBuf = decode_ok!(bytes);
+	assert_eq!(
+		option_buf.option_descriptor(),
+		decoded_buf.option_descriptor(),
+	);
+}
+
+#[test]
+fn util_option_descriptor_string_enum() {
+	let option_buf = util::StringOptionBuilder::new(CSTR_OPT_NAME, 123)
+		.values(vec![
+			CString::from(cstr(b"aaa\x00")),
+			CString::from(cstr(b"bbb\x00")),
+			CString::from(cstr(b"ccc\x00")),
+		])
+		.build();
+
+	let bytes = encode_ok!(&option_buf);
+	assert_eq!(bytes, concat_bytes_!(
+		[0, 0, 0, 12],
+		b"option-name\x00",
+		[0, 0, 0, 1],
+		b"\x00",
+		[0, 0, 0, 1],
+		b"\x00",
+		[0, 0, 0, 3],
+		[0, 0, 0, 0],
+		[0, 0, 0, 123],
+		[0, 0, 0, 0],
+
+		[0, 0, 0, 3], // ConstraintType::STRING_LIST
+		[0, 0, 0, 4], // strings.len() + 1
+		[0, 0, 0, 4], // strings[0].len
+		b"aaa\x00",
+		[0, 0, 0, 4], // strings[1].len
+		b"bbb\x00",
+		[0, 0, 0, 4], // strings[2].len
+		b"ccc\x00",
+		[0, 0, 0, 0], // NULL
+	));
+
+	let decoded_buf: util::OptionDescriptorBuf = decode_ok!(bytes);
+	assert_eq!(
+		option_buf.option_descriptor(),
+		decoded_buf.option_descriptor(),
+	);
+}
+
+#[test]
+fn util_option_descriptor_button() {
+	let option_buf = util::ButtonOptionBuilder::new(CSTR_OPT_NAME)
+		.title(CSTR_OPT_TITLE)
+		.description(CSTR_OPT_DESC)
+		.capabilities(util::Capabilities::SOFT_SELECT)
+		.build();
+
+	let bytes = encode_ok!(&option_buf);
+	assert_eq!(bytes, concat_bytes_!(
+		[0, 0, 0, 12], // CSTR_OPT_NAME.len()
+		b"option-name\x00",
+		[0, 0, 0, 13], // CSTR_OPT_TITLE.len()
+		b"option-title\x00",
+		[0, 0, 0, 19], // CSTR_OPT_DESC.len()
+		b"option-description\x00",
+		[0, 0, 0, 4], // ValueType::BUTTON
+		[0, 0, 0, 0], // Unit::NONE
+		[0, 0, 0, 0], // size (ignored for ValueType::BUTTON)
+		[0, 0, 0, 0b101], // CAP_SOFT_SELECT | CAP_SOFT_DETECT
+		[0, 0, 0, 0], // ConstraintType::NONE
+	));
+
+	let decoded_buf: util::OptionDescriptorBuf = decode_ok!(bytes);
+	assert_eq!(
+		option_buf.option_descriptor(),
+		decoded_buf.option_descriptor(),
+	);
+}
+
+#[test]
+fn util_option_descriptor_group() {
+	let option_buf = util::GroupOptionBuilder::new()
+		.title(CSTR_OPT_TITLE)
+		.description(CSTR_OPT_DESC)
+		.build();
+
+	let bytes = encode_ok!(&option_buf);
+	assert_eq!(bytes, concat_bytes_!(
+		[0, 0, 0, 1], // no name for groups
+		b"\x00",
+		[0, 0, 0, 13], // CSTR_OPT_TITLE.len()
+		b"option-title\x00",
+		[0, 0, 0, 19], // CSTR_OPT_DESC.len()
+		b"option-description\x00",
+		[0, 0, 0, 5], // ValueType::GROUP
+		[0, 0, 0, 0], // Unit::NONE
+		[0, 0, 0, 0], // size (ignored for ValueType::GROUP)
+		[0, 0, 0, 0], // capabilities (ignored for ValueType::GROUP)
+		[0, 0, 0, 0], // ConstraintType::NONE
+	));
+
+	let decoded_buf: util::OptionDescriptorBuf = decode_ok!(bytes);
+	assert_eq!(
+		option_buf.option_descriptor(),
+		decoded_buf.option_descriptor(),
+	);
 }
