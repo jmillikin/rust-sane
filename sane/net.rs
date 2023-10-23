@@ -13,9 +13,19 @@
 //
 // SPDX-License-Identifier: 0BSD
 
+#[cfg(any(doc, feature = "alloc"))]
+use alloc::{
+	ffi::CString,
+};
+
 use core::fmt;
 
-use crate::Word;
+use crate::{
+	Bool,
+	Int,
+	Word,
+};
+use crate::util;
 
 pub mod io;
 
@@ -126,3 +136,91 @@ impl fmt::Debug for ProcedureNumber {
 }
 
 // }}}
+
+impl io::Decode for crate::Range {
+	fn decode<R: io::Read>(
+		r: &mut io::Reader<R>,
+	) -> Result<Self, io::DecodeError<R::Error>> {
+		let mut range = crate::Range::new();
+		range.min = Word::decode(r)?;
+		range.max = Word::decode(r)?;
+		range.quant = Word::decode(r)?;
+		Ok(range)
+	}
+}
+
+impl io::Encode for crate::Range {
+	fn encode<W: io::Write>(
+		&self,
+		w: &mut io::Writer<W>,
+	) -> Result<(), io::EncodeError<W::Error>> {
+		self.min.encode(w)?;
+		self.max.encode(w)?;
+		self.quant.encode(w)
+	}
+}
+
+impl io::Decode for crate::Parameters {
+	fn decode<R: io::Read>(
+		r: &mut io::Reader<R>,
+	) -> Result<Self, io::DecodeError<R::Error>> {
+		let mut params = crate::Parameters::new();
+		params.format = crate::Frame::decode(r)?;
+		params.last_frame = Bool::decode(r)?;
+		params.bytes_per_line = Int::decode(r)?;
+		params.pixels_per_line = Int::decode(r)?;
+		params.lines = Int::decode(r)?;
+		params.depth = Int::decode(r)?;
+		Ok(params)
+	}
+}
+
+impl io::Encode for crate::Parameters {
+	fn encode<W: io::Write>(
+		&self,
+		w: &mut io::Writer<W>,
+	) -> Result<(), io::EncodeError<W::Error>> {
+		self.format.encode(w)?;
+		self.last_frame.encode(w)?;
+		self.bytes_per_line.encode(w)?;
+		self.pixels_per_line.encode(w)?;
+		self.lines.encode(w)?;
+		self.depth.encode(w)
+	}
+}
+
+impl io::Encode for util::Device<'_> {
+	fn encode<W: io::Write>(
+		&self,
+		w: &mut io::Writer<W>,
+	) -> Result<(), io::EncodeError<W::Error>> {
+		self.name().encode(w)?;
+		self.vendor().encode(w)?;
+		self.model().encode(w)?;
+		self.kind().encode(w)
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl io::Decode for util::DeviceBuf {
+	fn decode<R: io::Read>(
+		r: &mut io::Reader<R>,
+	) -> Result<Self, io::DecodeError<R::Error>> {
+		let dev_name = CString::decode(r)?;
+		let mut dev = util::DeviceBuf::new(dev_name);
+		dev.set_vendor(CString::decode(r)?);
+		dev.set_model(CString::decode(r)?);
+		dev.set_kind(CString::decode(r)?);
+		Ok(dev)
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl io::Encode for util::DeviceBuf {
+	fn encode<W: io::Write>(
+		&self,
+		w: &mut io::Writer<W>,
+	) -> Result<(), io::EncodeError<W::Error>> {
+		self.to_device().encode(w)
+	}
+}

@@ -28,12 +28,18 @@ use sane::net::{
 	ByteOrder,
 	ProcedureNumber,
 };
+use sane::util;
 
 const fn cstr(bytes: &[u8]) -> &CStr {
 	unsafe { CStr::from_bytes_with_nul_unchecked(bytes) }
 }
 
 const CSTR_EMPTY: &CStr = cstr(b"\x00");
+
+const CSTR_DEV_NAME: &CStr = cstr(b"device-name\x00");
+const CSTR_DEV_VENDOR: &CStr = cstr(b"device-vendor\x00");
+const CSTR_DEV_MODEL: &CStr = cstr(b"device-model\x00");
+const CSTR_DEV_TYPE: &CStr = cstr(b"device-type\x00");
 
 macro_rules! decode_ok {
 	($bytes:expr) => {{
@@ -82,6 +88,53 @@ macro_rules! assert_encode_eq {
 		let bytes = encode_ok!($value);
 		assert_eq!(bytes, $expect_bytes);
 	};
+}
+
+// https://github.com/rust-lang/rust/issues/87555
+macro_rules! concat_bytes_ {
+	($( $chunk:expr ),+ $( , )?) => {{
+		struct Chunk<T>(T);
+		#[allow(dead_code)]
+		impl<const N: usize> Chunk<[u8; N]> {
+			const fn get(&self) -> &[u8] { &self.0 }
+		}
+		#[allow(dead_code)]
+		impl<const N: usize> Chunk<&[u8; N]> {
+			const fn get(&self) -> &[u8] { self.0 }
+		}
+		#[allow(dead_code)]
+		impl Chunk<&[u8]> {
+			const fn get(&self) -> &[u8] { self.0 }
+		}
+		const fn bytes_len(chunks: &[&[u8]]) -> usize {
+			let mut len = 0;
+			let mut ii = 0;
+			while ii < chunks.len() {
+				len += chunks[ii].len();
+				ii += 1;
+			}
+			len
+		}
+		const fn chunks_concat<const N: usize>(chunks: &[&[u8]]) -> [u8; N] {
+			let mut buf = [0u8; N];
+			let mut ii = 0;
+			let mut buf_idx = 0;
+			while ii < chunks.len() {
+				let mut jj = 0;
+				while jj < chunks[ii].len() {
+					buf[buf_idx] = chunks[ii][jj];
+					jj += 1;
+					buf_idx += 1;
+				}
+				ii += 1;
+			}
+			buf
+		}
+		const CHUNKS: &[&[u8]] = &[$( Chunk($chunk).get() ),+];
+		const BYTES_LEN: usize = bytes_len(CHUNKS);
+		const BYTES: [u8; BYTES_LEN] = chunks_concat(CHUNKS);
+		BYTES
+	}};
 }
 
 #[test]
@@ -215,4 +268,69 @@ fn strings() {
 	// NUL before final byte
 	let err = decode_err!(CString, b"\x00\x00\x00\x02\x00\x00");
 	assert!(format!("{:?}", err).contains("InvalidString"));
+}
+
+#[test]
+fn sane_range() {
+	let mut range = sane::Range::new();
+	range.min = Word::new(0x11111111);
+	range.max = Word::new(0x22222222);
+	range.quant = Word::new(0x33333333);
+
+	let bytes = encode_ok!(&range);
+	assert_eq!(bytes, concat_bytes_!(
+		[0x11, 0x11, 0x11, 0x11], // min
+		[0x22, 0x22, 0x22, 0x22], // max
+		[0x33, 0x33, 0x33, 0x33], // quant
+	));
+
+	let decoded: sane::Range = decode_ok!(bytes);
+	assert_eq!(range, decoded);
+}
+
+#[test]
+fn sane_parameters() {
+	let mut params = sane::Parameters::new();
+	params.format = sane::Frame::BLUE;
+	params.last_frame = Bool::TRUE;
+	params.bytes_per_line = Int::new(0x11111111);
+	params.pixels_per_line = Int::new(0x22222222);
+	params.lines = Int::new(0x33333333);
+	params.depth = Int::new(0x44444444);
+
+	let bytes = encode_ok!(&params);
+	assert_eq!(bytes, concat_bytes_!(
+		[0, 0, 0, 4],             // format
+		[0, 0, 0, 1],             // last_frame
+		[0x11, 0x11, 0x11, 0x11], // bytes_per_line
+		[0x22, 0x22, 0x22, 0x22], // pixels_per_line
+		[0x33, 0x33, 0x33, 0x33], // lines
+		[0x44, 0x44, 0x44, 0x44], // depth
+	));
+
+	let decoded: sane::Parameters = decode_ok!(bytes);
+	assert_eq!(params, decoded);
+}
+
+#[test]
+fn util_device() {
+	let mut device_buf = util::DeviceBuf::new(CSTR_DEV_NAME);
+	device_buf.set_vendor(CSTR_DEV_VENDOR);
+	device_buf.set_model(CSTR_DEV_MODEL);
+	device_buf.set_kind(CSTR_DEV_TYPE);
+
+	let bytes = encode_ok!(&device_buf);
+	assert_eq!(bytes, concat_bytes_!(
+		[0, 0, 0, 12],
+		b"device-name\x00",
+		[0, 0, 0, 14],
+		b"device-vendor\x00",
+		[0, 0, 0, 13],
+		b"device-model\x00",
+		[0, 0, 0, 12],
+		b"device-type\x00",
+	));
+
+	let decoded_buf: util::DeviceBuf = decode_ok!(bytes);
+	assert_eq!(device_buf.to_device(), decoded_buf.to_device());
 }

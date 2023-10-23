@@ -864,7 +864,7 @@ pub type GetParametersFn = unsafe extern "C" fn(
 ) -> Status;
 
 /// `SANE_Parameters`
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 #[repr(C)]
 #[non_exhaustive]
 pub struct Parameters {

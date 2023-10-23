@@ -42,7 +42,7 @@ unsafe fn ref_array_next<T>(t: &T) -> &T {
 
 // Device {{{
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Device<'a> {
 	name: &'a CStr,
 	vendor: &'a CStr,
@@ -101,6 +101,15 @@ impl DeviceBuf {
 			vendor: Cow::Borrowed(CSTR_EMPTY),
 			model: Cow::Borrowed(CSTR_EMPTY),
 			kind: Cow::Borrowed(CSTR_EMPTY),
+		}
+	}
+
+	pub fn to_device(&self) -> Device {
+		Device {
+			name: self.name.as_ref(),
+			vendor: self.vendor.as_ref(),
+			model: self.model.as_ref(),
+			kind: self.kind.as_ref(),
 		}
 	}
 
