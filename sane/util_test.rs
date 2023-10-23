@@ -13,9 +13,9 @@
 //
 // SPDX-License-Identifier: 0BSD
 
-use core::ffi::CStr;
-use core::mem::size_of;
-use core::ptr;
+use std::ffi::{CStr, CString};
+use std::mem::size_of;
+use std::ptr;
 
 use sane::StringConst;
 use sane::util;
@@ -496,10 +496,10 @@ fn string_option_builder() {
 #[test]
 fn string_option_builder_values() {
 	let buf = util::StringOptionBuilder::new(CSTR_EMPTY, 1234)
-		.values(&[
-			cstr(b"aaa\x00"),
-			cstr(b"bbb\x00"),
-			cstr(b"ccc\x00"),
+		.values(vec![
+			CString::from(cstr(b"aaa\x00")),
+			CString::from(cstr(b"bbb\x00")),
+			CString::from(cstr(b"ccc\x00")),
 		])
 		.build();
 
