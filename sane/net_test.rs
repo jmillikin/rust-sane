@@ -23,9 +23,6 @@ use sane::net::{
 	ByteOrder,
 	ProcedureNumber,
 };
-use sane::net::io::{
-	DecodeError,
-};
 
 macro_rules! decode_ok {
 	($bytes:expr) => {{
@@ -119,7 +116,7 @@ fn sane_bool() {
 	assert_encode_eq!(Bool::TRUE, b"\x00\x00\x00\x01");
 
 	let err = decode_err!(Bool, b"\x00\x00\x00\x02");
-	assert!(matches!(err, DecodeError::InvalidBool(_)));
+	assert!(format!("{:?}", err).contains("InvalidBool"));
 }
 
 #[test]

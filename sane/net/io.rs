@@ -117,11 +117,23 @@ pub trait Decode: Sized {
 	) -> Result<Self, DecodeError<R::Error>>;
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
-pub enum DecodeError<IoError> {
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DecodeError<IoError> {
+	kind: DecodeErrorKind<IoError>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+enum DecodeErrorKind<IoError> {
 	InvalidBool(Word),
 	IoError(IoError),
+}
+
+impl<IoError> DecodeError<IoError> {
+	fn io_err(err: IoError) -> Self {
+		DecodeError {
+			kind: DecodeErrorKind::IoError(err),
+		}
+	}
 }
 
 // }}}
@@ -135,10 +147,22 @@ pub trait Encode {
 	) -> Result<(), EncodeError<W::Error>>;
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[non_exhaustive]
-pub enum EncodeError<IoError> {
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct EncodeError<IoError> {
+	kind: EncodeErrorKind<IoError>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+enum EncodeErrorKind<IoError> {
 	IoError(IoError),
+}
+
+impl<IoError> EncodeError<IoError> {
+	fn io_err(err: IoError) -> Self {
+		EncodeError {
+			kind: EncodeErrorKind::IoError(err),
+		}
+	}
 }
 
 // }}}
@@ -154,7 +178,7 @@ impl<R: Read> Reader<'_, R> {
 		&mut self,
 		buf: &mut [u8],
 	) -> Result<(), DecodeError<R::Error>> {
-		self.r.read_exact(buf).map_err(|e| DecodeError::IoError(e))
+		self.r.read_exact(buf).map_err(|e| DecodeError::io_err(e))
 	}
 }
 
@@ -168,7 +192,7 @@ pub struct Writer<'a, W> {
 
 impl<W: Write> Writer<'_, W> {
 	fn write_bytes(&mut self, buf: &[u8]) -> Result<(), EncodeError<W::Error>> {
-		self.w.write_all(buf).map_err(|e| EncodeError::IoError(e))
+		self.w.write_all(buf).map_err(|e| EncodeError::io_err(e))
 	}
 }
 
@@ -204,7 +228,9 @@ impl Decode for crate::Bool {
 		match word.as_u32() {
 			0 => Ok(Self::FALSE),
 			1 => Ok(Self::TRUE),
-			_ => Err(DecodeError::InvalidBool(word)),
+			_ => Err(DecodeError {
+				kind: DecodeErrorKind::InvalidBool(word),
+			}),
 		}
 	}
 }
