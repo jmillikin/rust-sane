@@ -322,7 +322,7 @@ impl DevicesBuf {
 
 // OptionDescriptor {{{
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub struct OptionDescriptor<'a> {
 	name: &'a CStr,
 	title: &'a CStr,
@@ -948,7 +948,7 @@ impl GroupOptionBuilder {
 
 // Capabilities {{{
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub struct Capabilities {
 	bits: u32,
 }
@@ -1067,7 +1067,7 @@ impl fmt::Debug for DebugCapabilityBit {
 // Constraint {{{
 
 #[non_exhaustive]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub enum Constraint<'a> {
 	None,
 	IntRange(&'a crate::Range),
@@ -1176,6 +1176,25 @@ pub struct WordList<'a> {
 	words: &'a crate::Word,
 }
 
+impl PartialEq for WordList<'_> {
+	fn eq(&self, other: &WordList) -> bool {
+		let mut x = self.iter();
+		let mut y = other.iter();
+		loop {
+			let x_next = x.next();
+			let y_next = y.next();
+			if x_next != y_next {
+				return false;
+			}
+			if x_next == None {
+				return true;
+			}
+		}
+	}
+}
+
+impl Eq for WordList<'_> {}
+
 impl fmt::Debug for WordList<'_> {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		f.debug_list().entries(self).finish()
@@ -1250,6 +1269,25 @@ impl<'a> Iterator for WordListIter<'a> {
 pub struct StringList<'a> {
 	strings: &'a crate::StringConst,
 }
+
+impl PartialEq for StringList<'_> {
+	fn eq(&self, other: &StringList) -> bool {
+		let mut x = self.iter();
+		let mut y = other.iter();
+		loop {
+			let x_next = x.next();
+			let y_next = y.next();
+			if x_next != y_next {
+				return false;
+			}
+			if x_next == None {
+				return true;
+			}
+		}
+	}
+}
+
+impl Eq for StringList<'_> {}
 
 impl fmt::Debug for StringList<'_> {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

@@ -201,7 +201,7 @@ fn util_option_descriptor() {
 	assert_eq!(option.value_type(), sane::ValueType::INT);
 	assert_eq!(option.unit(), sane::Unit::PIXEL);
 	assert_eq!(option.size(), size_of::<sane::Int>());
-	//assert_eq!(option.capabilities(), util::Capabilities::new());
+	assert_eq!(option.capabilities(), util::Capabilities::new());
 	assert!(matches!(option.constraint(), util::Constraint::None));
 
 	assert_eq!(
