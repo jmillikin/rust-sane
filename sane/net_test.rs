@@ -13,6 +13,11 @@
 //
 // SPDX-License-Identifier: 0BSD
 
+use std::ffi::{
+	CStr,
+	CString,
+};
+
 use sane::{
 	Bool,
 	Fixed,
@@ -23,6 +28,12 @@ use sane::net::{
 	ByteOrder,
 	ProcedureNumber,
 };
+
+const fn cstr(bytes: &[u8]) -> &CStr {
+	unsafe { CStr::from_bytes_with_nul_unchecked(bytes) }
+}
+
+const CSTR_EMPTY: &CStr = cstr(b"\x00");
 
 macro_rules! decode_ok {
 	($bytes:expr) => {{
@@ -63,7 +74,7 @@ macro_rules! encode_ok {
 		use sane::net::io::Encode;
 		$value.encode(&mut writer).unwrap();
 		bytes
-	}}
+	}};
 }
 
 macro_rules! assert_encode_eq {
@@ -110,7 +121,7 @@ fn sane_word() {
 #[test]
 fn sane_bool() {
 	assert_decode_eq!(Bool::FALSE, b"\x00\x00\x00\x00");
-	assert_encode_eq!(Bool::FALSE,  b"\x00\x00\x00\x00");
+	assert_encode_eq!(Bool::FALSE, b"\x00\x00\x00\x00");
 
 	assert_decode_eq!(Bool::TRUE, b"\x00\x00\x00\x01");
 	assert_encode_eq!(Bool::TRUE, b"\x00\x00\x00\x01");
@@ -168,4 +179,40 @@ fn sane_net_enums() {
 
 	assert_decode_eq!(sane::net::ProcedureNumber::INIT, b"\x00\x00\x00\x00");
 	assert_encode_eq!(sane::net::ProcedureNumber::INIT, b"\x00\x00\x00\x00");
+}
+
+#[test]
+fn strings() {
+	fn cstring_empty() -> CString {
+		CString::from(CSTR_EMPTY)
+	}
+
+	// (char*)(NULL) encodes as len=0
+	assert_encode_eq!(Option::<&CStr>::None, b"\x00\x00\x00\x00");
+
+	// len=0 strings can be decoded to an Option (preserving NULL)
+	assert_decode_eq!(Option::<CString>::None, b"\x00\x00\x00\x00");
+
+	// len=0 strings can be decoded to a CString (NULL -> "")
+	assert_decode_eq!(cstring_empty(), b"\x00\x00\x00\x00");
+
+	// (char*)("") encodes as len=1 data="\x00"
+	assert_encode_eq!(Some(CSTR_EMPTY), b"\x00\x00\x00\x01\x00");
+	assert_encode_eq!(CSTR_EMPTY, b"\x00\x00\x00\x01\x00");
+	assert_encode_eq!(Some(cstring_empty()), b"\x00\x00\x00\x01\x00");
+	assert_encode_eq!(cstring_empty(), b"\x00\x00\x00\x01\x00");
+
+	assert_decode_eq!(cstring_empty(), b"\x00\x00\x00\x01\x00");
+	assert_decode_eq!(Some(cstring_empty()), b"\x00\x00\x00\x01\x00");
+
+	// (char*)("abc") encodes as len=4 data="abc\x00"
+	assert_encode_eq!(cstr(b"abc\x00"), b"\x00\x00\x00\x04abc\x00");
+
+	// missing NUL
+	let err = decode_err!(CString, b"\x00\x00\x00\x01a");
+	assert!(format!("{:?}", err).contains("InvalidString"));
+
+	// NUL before final byte
+	let err = decode_err!(CString, b"\x00\x00\x00\x02\x00\x00");
+	assert!(format!("{:?}", err).contains("InvalidString"));
 }

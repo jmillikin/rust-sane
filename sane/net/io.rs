@@ -13,6 +13,17 @@
 //
 // SPDX-License-Identifier: 0BSD
 
+#[cfg(any(doc, feature = "alloc"))]
+use alloc::{
+	ffi::CString,
+	vec::Vec,
+};
+
+use core::{
+	convert::TryFrom,
+	ffi::CStr,
+};
+
 use crate::Word;
 
 // Read {{{
@@ -122,8 +133,12 @@ pub struct DecodeError<IoError> {
 	kind: DecodeErrorKind<IoError>,
 }
 
+#[allow(dead_code)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 enum DecodeErrorKind<IoError> {
+	SizeOverflow(u32),
+	TryReserveError(usize),
+	InvalidString,
 	InvalidBool(Word),
 	IoError(IoError),
 }
@@ -152,8 +167,10 @@ pub struct EncodeError<IoError> {
 	kind: EncodeErrorKind<IoError>,
 }
 
+#[allow(dead_code)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 enum EncodeErrorKind<IoError> {
+	SizeOverflow(usize),
 	IoError(IoError),
 }
 
@@ -180,6 +197,17 @@ impl<R: Read> Reader<'_, R> {
 	) -> Result<(), DecodeError<R::Error>> {
 		self.r.read_exact(buf).map_err(|e| DecodeError::io_err(e))
 	}
+
+	#[cfg(any(doc, feature = "alloc"))]
+	fn read_size(&mut self) -> Result<usize, DecodeError<R::Error>> {
+		let size = Word::decode(self)?.as_u32();
+		match usize::try_from(size) {
+			Ok(size) => Ok(size),
+			Err(_) => Err(DecodeError {
+				kind: DecodeErrorKind::SizeOverflow(size),
+			}),
+		}
+	}
 }
 
 // }}}
@@ -193,6 +221,18 @@ pub struct Writer<'a, W> {
 impl<W: Write> Writer<'_, W> {
 	fn write_bytes(&mut self, buf: &[u8]) -> Result<(), EncodeError<W::Error>> {
 		self.w.write_all(buf).map_err(|e| EncodeError::io_err(e))
+	}
+
+	pub fn write_size(
+		&mut self,
+		size: usize,
+	) -> Result<(), EncodeError<W::Error>> {
+		match u32::try_from(size) {
+			Ok(size) => Word::new(size).encode(self),
+			Err(_) => Err(EncodeError {
+				kind: EncodeErrorKind::SizeOverflow(size),
+			}),
+		}
 	}
 }
 
@@ -276,5 +316,100 @@ decode_encode_as_word!(crate::Action);
 decode_encode_as_word!(crate::Frame);
 decode_encode_as_word!(crate::net::ByteOrder);
 decode_encode_as_word!(crate::net::ProcedureNumber);
+
+impl Encode for CStr {
+	fn encode<W: Write>(
+		&self,
+		w: &mut Writer<W>,
+	) -> Result<(), EncodeError<W::Error>> {
+		let bytes = self.to_bytes_with_nul();
+		w.write_size(bytes.len())?;
+		w.write_bytes(bytes)
+	}
+}
+
+impl Encode for Option<&CStr> {
+	fn encode<W: Write>(
+		&self,
+		w: &mut Writer<W>,
+	) -> Result<(), EncodeError<W::Error>> {
+		match self {
+			None => Word::new(0).encode(w),
+			Some(cstr) => cstr.encode(w),
+		}
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl Encode for CString {
+	fn encode<W: Write>(
+		&self,
+		w: &mut Writer<W>,
+	) -> Result<(), EncodeError<W::Error>> {
+		self.as_c_str().encode(w)
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl Encode for Option<CString> {
+	fn encode<W: Write>(
+		&self,
+		w: &mut Writer<W>,
+	) -> Result<(), EncodeError<W::Error>> {
+		self.as_ref().map(|s| s.as_c_str()).encode(w)
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl Decode for CString {
+	fn decode<R: Read>(
+		r: &mut Reader<R>,
+	) -> Result<Self, DecodeError<R::Error>> {
+		if let Some(value) = Decode::decode(r)? {
+			return Ok(value);
+		}
+		try_cstring_new()
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+fn try_cstring_new<E>() -> Result<CString, DecodeError<E>> {
+	let len = 1;
+	let mut vec = Vec::new();
+	if let Err(_) = vec.try_reserve(len) {
+		return Err(DecodeError {
+			kind: DecodeErrorKind::TryReserveError(len),
+		});
+	}
+	vec.resize(len, 0u8);
+	Ok(unsafe { CString::from_vec_with_nul_unchecked(vec) })
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl Decode for Option<CString> {
+	fn decode<R: Read>(
+		r: &mut Reader<R>,
+	) -> Result<Self, DecodeError<R::Error>> {
+		let len = r.read_size()?;
+		if len == 0 {
+			return Ok(None);
+		}
+
+		let mut vec = Vec::new();
+		if let Err(_) = vec.try_reserve(len) {
+			return Err(DecodeError {
+				kind: DecodeErrorKind::TryReserveError(len),
+			});
+		}
+		vec.resize(len, 0u8);
+		r.read_bytes(&mut vec)?;
+		match CString::from_vec_with_nul(vec) {
+			Ok(v) => Ok(Some(v)),
+			Err(_) => Err(DecodeError {
+				kind: DecodeErrorKind::InvalidString,
+			}),
+		}
+	}
+}
 
 // }}}
