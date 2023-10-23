@@ -201,7 +201,7 @@ fn util_option_descriptor() {
 	assert_eq!(option.value_type(), sane::ValueType::INT);
 	assert_eq!(option.unit(), sane::Unit::PIXEL);
 	assert_eq!(option.size(), size_of::<sane::Int>());
-	assert_eq!(option.capabilities(), util::Capabilities::new());
+	assert_eq!(option.capabilities(), util::Capabilities::NONE);
 	assert!(matches!(option.constraint(), util::Constraint::None));
 
 	assert_eq!(
@@ -227,7 +227,7 @@ fn bool_option_builder() {
 		.title(CSTR_OPT_TITLE)
 		.description(CSTR_OPT_DESC)
 		.capabilities({
-			let mut caps = util::Capabilities::new();
+			let mut caps = util::Capabilities::NONE;
 			caps.set_emulated(true);
 			caps
 		})
@@ -267,7 +267,7 @@ fn int_option_builder() {
 		.description(CSTR_OPT_DESC)
 		.unit(sane::Unit::PIXEL)
 		.capabilities({
-			let mut caps = util::Capabilities::new();
+			let mut caps = util::Capabilities::NONE;
 			caps.set_emulated(true);
 			caps
 		})
@@ -359,7 +359,7 @@ fn fixed_option_builder() {
 		.description(CSTR_OPT_DESC)
 		.unit(sane::Unit::PIXEL)
 		.capabilities({
-			let mut caps = util::Capabilities::new();
+			let mut caps = util::Capabilities::NONE;
 			caps.set_emulated(true);
 			caps
 		})
@@ -459,7 +459,7 @@ fn string_option_builder() {
 		.description(CSTR_OPT_DESC)
 		.unit(sane::Unit::PIXEL)
 		.capabilities({
-			let mut caps = util::Capabilities::new();
+			let mut caps = util::Capabilities::NONE;
 			caps.set_emulated(true);
 			caps
 		})
@@ -523,7 +523,7 @@ fn button_option_builder() {
 		.title(CSTR_OPT_TITLE)
 		.description(CSTR_OPT_DESC)
 		.capabilities({
-			let mut caps = util::Capabilities::new();
+			let mut caps = util::Capabilities::NONE;
 			caps.set_emulated(true);
 			caps
 		})
@@ -613,7 +613,7 @@ fn util_capabilities() {
 		caps.set_soft_detect(false);
 		assert!(!caps.can_soft_detect());
 
-		caps = util::Capabilities::new();
+		caps = util::Capabilities::NONE;
 		assert!(!caps.can_soft_detect());
 		caps.set_soft_detect(true);
 		assert!(caps.can_soft_detect());
@@ -625,22 +625,22 @@ fn util_capabilities() {
 	{
 		let mut caps;
 
-		caps = util::Capabilities::new();
+		caps = util::Capabilities::NONE;
 		assert!(!caps.is_emulated());
 		caps.set_emulated(true);
 		assert!(caps.is_emulated());
 
-		caps = util::Capabilities::new();
+		caps = util::Capabilities::NONE;
 		assert!(!caps.is_automatic());
 		caps.set_automatic(true);
 		assert!(caps.is_automatic());
 
-		caps = util::Capabilities::new();
+		caps = util::Capabilities::NONE;
 		assert!(caps.is_active());
 		caps.set_active(false);
 		assert!(!caps.is_active());
 
-		caps = util::Capabilities::new();
+		caps = util::Capabilities::NONE;
 		assert!(!caps.is_advanced());
 		caps.set_advanced(true);
 		assert!(caps.is_advanced());

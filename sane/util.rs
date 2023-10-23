@@ -484,7 +484,7 @@ impl BoolOptionBuilder {
 			name: name.into(),
 			title: None,
 			description: None,
-			capabilities: Capabilities::new(),
+			capabilities: Capabilities::NONE,
 		}
 	}
 
@@ -543,7 +543,7 @@ impl IntOptionBuilder {
 			title: None,
 			description: None,
 			unit: crate::Unit::NONE,
-			capabilities: Capabilities::new(),
+			capabilities: Capabilities::NONE,
 			size: size_of::<crate::Int>() as i32,
 			range: None,
 			word_list: None,
@@ -662,7 +662,7 @@ impl FixedOptionBuilder {
 			title: None,
 			description: None,
 			unit: crate::Unit::NONE,
-			capabilities: Capabilities::new(),
+			capabilities: Capabilities::NONE,
 			size: size_of::<crate::Fixed>() as i32,
 			range: None,
 			word_list: None,
@@ -786,7 +786,7 @@ impl StringOptionBuilder {
 			title: None,
 			description: None,
 			unit: crate::Unit::NONE,
-			capabilities: Capabilities::new(),
+			capabilities: Capabilities::NONE,
 			size: size as i32,
 			values: None,
 		}
@@ -865,7 +865,7 @@ impl ButtonOptionBuilder {
 			name: name.into(),
 			title: None,
 			description: None,
-			capabilities: Capabilities::new(),
+			capabilities: Capabilities::NONE,
 		}
 	}
 
@@ -969,6 +969,8 @@ impl fmt::Debug for Capabilities {
 }
 
 impl Capabilities {
+	pub const NONE: Capabilities = Capabilities { bits: 0 };
+
 	pub const SOFT_SELECT: Capabilities = Capabilities {
 		bits: crate::CAP_SOFT_SELECT | crate::CAP_SOFT_DETECT,
 	};
@@ -977,8 +979,12 @@ impl Capabilities {
 		bits: crate::CAP_HARD_SELECT,
 	};
 
-	pub fn new() -> Capabilities {
-		Self { bits: 0 }
+	pub const fn as_word(self) -> crate::Word {
+		crate::Word::new(self.bits)
+	}
+
+	pub const fn from_word(word: crate::Word) -> Capabilities {
+		Capabilities { bits: word.as_u32() }
 	}
 
 	#[allow(dead_code)]
