@@ -170,6 +170,12 @@ fn sane_net_procedure_number() {
 }
 
 #[test]
+fn sane_net_handle() {
+	assert_decode_eq!(sane::net::Handle(0x12345678), b"\x12\x34\x56\x78");
+	assert_encode_eq!(sane::net::Handle(0x12345678), b"\x12\x34\x56\x78");
+}
+
+#[test]
 fn sane_word() {
 	assert_decode_eq!(Word::new(0x12345678), b"\x12\x34\x56\x78");
 	assert_encode_eq!(Word::new(0x12345678), b"\x12\x34\x56\x78");

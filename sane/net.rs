@@ -141,6 +141,30 @@ impl fmt::Debug for ProcedureNumber {
 
 // }}}
 
+// Handle {{{
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct Handle(pub u32);
+
+impl io::Decode for Handle {
+	fn decode<R: io::Read>(
+		r: &mut io::Reader<R>,
+	) -> Result<Self, io::DecodeError<R::Error>> {
+		Ok(Handle(Word::decode(r)?.as_u32()))
+	}
+}
+
+impl io::Encode for Handle {
+	fn encode<W: io::Write>(
+		&self,
+		w: &mut io::Writer<W>,
+	) -> Result<(), io::EncodeError<W::Error>> {
+		Word::new(self.0).encode(w)
+	}
+}
+
+// }}}
+
 impl io::Decode for crate::Range {
 	fn decode<R: io::Read>(
 		r: &mut io::Reader<R>,
