@@ -1093,3 +1093,52 @@ fn cancel_reply() {
 	let decoded: net::CancelReplyBuf = decode_ok!(bytes);
 	assert_eq!(reply_buf, decoded);
 }
+
+#[test]
+fn authorize_request() {
+	let mut request_buf = net::AuthorizeRequestBuf::new();
+	request_buf.set_resource(cstr(b"auth-resource\x00"));
+	request_buf.set_username(cstr(b"auth-username\x00"));
+	request_buf.set_password(cstr(b"auth-password\x00"));
+	let request = request_buf.as_ref();
+
+	assert_eq!(
+		format!("{:#?}", request),
+		concat!(
+			"AuthorizeRequest {\n",
+			"    resource: \"auth-resource\",\n",
+			"    username: \"auth-username\",\n",
+			"    password: \"auth-password\",\n",
+			"}",
+		),
+	);
+
+	let bytes = encode_ok!(&request);
+	assert_eq!(bytes, concat_bytes_!(
+		[0, 0, 0, 9], // SANE_NET_AUTHORIZE
+
+		[0, 0, 0, 14], // resource.len
+		b"auth-resource\x00",
+		[0, 0, 0, 14], // username.len
+		b"auth-username\x00",
+		[0, 0, 0, 14], // password.len
+		b"auth-password\x00",
+	));
+
+	let decoded: net::AuthorizeRequestBuf = decode_ok!(bytes);
+	assert_eq!(request_buf, decoded);
+}
+
+#[test]
+fn authorize_reply() {
+	let reply_buf = net::AuthorizeReplyBuf::new();
+	let reply = reply_buf.as_ref();
+
+	assert_eq!(format!("{:#?}", reply), "AuthorizeReply");
+
+	let bytes = encode_ok!(reply);
+	assert_eq!(bytes, &[0, 0, 0, 0]);
+
+	let decoded: net::AuthorizeReplyBuf = decode_ok!(bytes);
+	assert_eq!(reply_buf, decoded);
+}
