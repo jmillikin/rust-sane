@@ -726,6 +726,35 @@ impl OptionDescriptorBuf {
 		self.inner.capabilities = capabilities;
 	}
 
+	fn set_constraint_range(&mut self, range: crate::Range) {
+		let range_box = Box::new(range);
+		let range_ptr: *const crate::Range = range_box.as_ref();
+		self.constraint_range = Some(range_box);
+		self.raw.constraint_type = crate::ConstraintType::RANGE;
+		self.raw.constraint = range_ptr.cast();
+		self.update_constraint();
+	}
+
+	fn set_constraint_word_list(&mut self, words: Vec<crate::Word>) {
+		let words_ptr: *const crate::Word = words.as_ptr();
+		self.constraint_word_list = words;
+		self.raw.constraint_type = crate::ConstraintType::WORD_LIST;
+		self.raw.constraint = words_ptr.cast();
+		self.update_constraint();
+	}
+
+	fn set_constraint_string_list(&mut self, mut values: Vec<CString>) {
+		let string_list = &mut self.constraint_string_list;
+		for value in values.iter() {
+			string_list.push(crate::StringConst::from_c_str(&value));
+		}
+		string_list.push(crate::StringConst::null());
+		self.strings.append(&mut values);
+		self.raw.constraint_type = crate::ConstraintType::STRING_LIST;
+		self.raw.constraint = string_list.as_ptr().cast();
+		self.update_constraint();
+	}
+
 	fn update_constraint(&mut self) {
 		self.inner.constraint = unsafe {
 			Constraint::from_ptr(
@@ -745,6 +774,13 @@ impl OptionDescriptorBuf {
 impl AsRef<OptionDescriptor> for OptionDescriptorBuf {
 	fn as_ref(&self) -> &OptionDescriptor {
 		self.inner.as_ref()
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl Clone for OptionDescriptorBuf {
+	fn clone(&self) -> Self {
+		OptionDescriptorBuf::from(self.as_ref())
 	}
 }
 
@@ -798,6 +834,59 @@ impl PartialEq<OptionDescriptorRef<'_>> for OptionDescriptorBuf {
 impl PartialEq<OptionDescriptorBuf> for OptionDescriptorRef<'_> {
 	fn eq(&self, other: &OptionDescriptorBuf) -> bool {
 		self.inner == other.inner
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl From<&OptionDescriptor> for OptionDescriptorBuf {
+	fn from(dev: &OptionDescriptor) -> OptionDescriptorBuf {
+		let mut name = None;
+		let mut title = None;
+		let mut desc = None;
+
+		if !dev.name().is_empty() {
+			name = Some(CString::from(dev.name()));
+		}
+		if !dev.title().is_empty() {
+			title = Some(CString::from(dev.title()));
+		}
+		if !dev.description().is_empty() {
+			desc = Some(CString::from(dev.description()));
+		}
+
+		let mut buf = OptionDescriptorBuf::new(name, title, desc);
+		buf.set_value_type(dev.value_type());
+		buf.set_size(dev.size());
+		buf.set_capabilities(dev.capabilities());
+
+		match dev.inner.constraint {
+			Constraint::None => {},
+			Constraint::IntRange(range) => {
+				buf.set_constraint_range(*range);
+			},
+			Constraint::FixedRange(range) => {
+				buf.set_constraint_range(*range);
+			},
+			Constraint::IntList(word_list) => {
+				buf.set_constraint_word_list(word_list.iter().collect());
+			},
+			Constraint::FixedList(word_list) => {
+				buf.set_constraint_word_list(word_list.iter().collect());
+			},
+			Constraint::StringList(string_list) => {
+				let strings = string_list.iter().map(|s| s.into()).collect();
+				buf.set_constraint_string_list(strings);
+			},
+		}
+
+		buf
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl From<OptionDescriptorRef<'_>> for OptionDescriptorBuf {
+	fn from(dev: OptionDescriptorRef) -> OptionDescriptorBuf {
+		Self::from(dev.inner.as_ref())
 	}
 }
 
@@ -959,17 +1048,9 @@ impl IntOptionBuilder {
 		buf.set_capabilities(self.capabilities);
 
 		if let Some(range) = self.range {
-			let range_box = Box::new(range);
-			let range_ptr: *const crate::Range = range_box.as_ref();
-			buf.constraint_range = Some(range_box);
-			buf.raw.constraint_type = crate::ConstraintType::RANGE;
-			buf.raw.constraint = range_ptr.cast();
-			buf.update_constraint();
+			buf.set_constraint_range(range);
 		} else if let Some(word_list) = self.word_list {
-			buf.constraint_word_list = word_list;
-			buf.raw.constraint_type = crate::ConstraintType::WORD_LIST;
-			buf.raw.constraint = buf.constraint_word_list.as_ptr().cast();
-			buf.update_constraint();
+			buf.set_constraint_word_list(word_list);
 		}
 
 		buf
@@ -1085,17 +1166,9 @@ impl FixedOptionBuilder {
 		buf.set_capabilities(self.capabilities);
 
 		if let Some(range) = self.range {
-			let range_box = Box::new(range);
-			let range_ptr: *const crate::Range = range_box.as_ref();
-			buf.constraint_range = Some(range_box);
-			buf.raw.constraint_type = crate::ConstraintType::RANGE;
-			buf.raw.constraint = range_ptr.cast();
-			buf.update_constraint();
+			buf.set_constraint_range(range);
 		} else if let Some(word_list) = self.word_list {
-			buf.constraint_word_list = word_list;
-			buf.raw.constraint_type = crate::ConstraintType::WORD_LIST;
-			buf.raw.constraint = buf.constraint_word_list.as_ptr().cast();
-			buf.update_constraint();
+			buf.set_constraint_word_list(word_list);
 		}
 
 		buf
@@ -1171,17 +1244,8 @@ impl StringOptionBuilder {
 		buf.set_unit(self.unit);
 		buf.set_capabilities(self.capabilities);
 
-		if let Some(mut values) = self.values {
-			let string_list = &mut buf.constraint_string_list;
-			for value in values.iter() {
-				string_list.push(crate::StringConst::from_c_str(&value));
-			}
-			string_list.push(crate::StringConst::null());
-			buf.strings.append(&mut values);
-			buf.raw.constraint_type = crate::ConstraintType::STRING_LIST;
-			buf.raw.constraint = string_list.as_ptr().cast();
-
-			buf.update_constraint();
+		if let Some(values) = self.values {
+			buf.set_constraint_string_list(values);
 		}
 
 		buf
