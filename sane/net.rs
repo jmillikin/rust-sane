@@ -680,7 +680,7 @@ impl io::Encode for GetDevicesReply {
 		w: &mut io::Writer<W>,
 	) -> Result<(), io::EncodeError<W::Error>> {
 		self.status().encode(w)?;
-		Word::new(self.devices().len() as u32).encode(w)?;
+		Word::new((self.devices().len() + 1) as u32).encode(w)?;
 		for device in self.devices() {
 			w.write_ptr(Some(*device))?;
 		}

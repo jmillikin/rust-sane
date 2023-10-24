@@ -810,7 +810,7 @@ fn get_devices_reply() {
 	assert_eq!(bytes, concat_bytes_!(
 		[0, 0, 0, 11], // Status::ACCESS_DENIED
 
-		[0, 0, 0, 2], // device_list.len()
+		[0, 0, 0, 3], // device_list.len() + 1
 
 		[0, 0, 0, 0], // device_list[0].is_null()
 		[0, 0, 0, 12],
