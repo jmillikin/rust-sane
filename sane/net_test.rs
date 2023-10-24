@@ -936,6 +936,79 @@ fn close_reply() {
 }
 
 #[test]
+fn get_parameters_request() {
+	let mut request_buf = net::GetParametersRequestBuf::new();
+	request_buf.set_handle(net::Handle(0x11223344));
+	let request = request_buf.as_ref();
+
+	assert_eq!(
+		format!("{:#?}", request),
+		concat!(
+			"GetParametersRequest {\n",
+			"    handle: Handle(287454020),\n",
+			"}",
+		),
+	);
+
+	let bytes = encode_ok!(&request);
+	assert_eq!(bytes, concat_bytes_!(
+		[0, 0, 0, 6],             // SANE_NET_GET_PARAMETERS
+		[0x11, 0x22, 0x33, 0x44], // handle
+	));
+
+	let decoded: net::GetParametersRequestBuf = decode_ok!(bytes);
+	assert_eq!(request_buf, decoded);
+}
+
+#[test]
+fn get_parameters_reply() {
+	let mut params = sane::Parameters::new();
+	params.format = sane::Frame::BLUE;
+	params.last_frame = sane::Bool::TRUE;
+	params.bytes_per_line = sane::Int::new(0x11111111);
+	params.pixels_per_line = sane::Int::new(0x22222222);
+	params.lines = sane::Int::new(0x33333333);
+	params.depth = sane::Int::new(0x44444444);
+
+	let mut reply_buf = net::GetParametersReplyBuf::new();
+	reply_buf.set_status(sane::Status::ACCESS_DENIED);
+	reply_buf.set_parameters(params);
+	let reply = reply_buf.as_ref();
+
+	assert_eq!(
+		format!("{:#?}", reply),
+		concat!(
+			"GetParametersReply {\n",
+			"    status: SANE_STATUS_ACCESS_DENIED,\n",
+			"    parameters: SANE_Parameters {\n",
+			"        format: SANE_FRAME_BLUE,\n",
+			"        last_frame: SANE_TRUE,\n",
+			"        bytes_per_line: SANE_Int(286331153),\n",
+			"        pixels_per_line: SANE_Int(572662306),\n",
+			"        lines: SANE_Int(858993459),\n",
+			"        depth: SANE_Int(1145324612),\n",
+			"    },\n",
+			"}",
+		),
+	);
+
+	let bytes = encode_ok!(&reply);
+	assert_eq!(bytes, concat_bytes_!(
+		[0, 0, 0, 11],            // Status::ACCESS_DENIED
+
+		[0, 0, 0, 4],             // params.format
+		[0, 0, 0, 1],             // params.last_frame
+		[0x11, 0x11, 0x11, 0x11], // params.bytes_per_line
+		[0x22, 0x22, 0x22, 0x22], // params.pixels_per_line
+		[0x33, 0x33, 0x33, 0x33], // params.lines
+		[0x44, 0x44, 0x44, 0x44], // params.depth
+	));
+
+	let decoded: net::GetParametersReplyBuf = decode_ok!(bytes);
+	assert_eq!(reply_buf, decoded);
+}
+
+#[test]
 fn cancel_request() {
 	let mut request_buf = net::CancelRequestBuf::new();
 	request_buf.set_handle(net::Handle(0x11223344));
