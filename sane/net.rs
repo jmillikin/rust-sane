@@ -1469,6 +1469,258 @@ impl io::Decode for CloseReplyBuf {
 
 // }}}
 
+// [5.2.9] SANE_NET_CANCEL {{{
+
+// CancelRequest {{{
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct CancelRequest {
+	handle: Handle,
+}
+
+impl CancelRequest {
+	pub fn handle(&self) -> Handle {
+		self.handle
+	}
+}
+
+impl io::Encode for CancelRequest {
+	fn encode<W: io::Write>(
+		&self,
+		w: &mut io::Writer<W>,
+	) -> Result<(), io::EncodeError<W::Error>> {
+		ProcedureNumber::CANCEL.encode(w)?;
+		self.handle.encode(w)
+	}
+}
+
+// }}}
+
+// CancelRequestBuf {{{
+
+#[cfg(any(doc, feature = "alloc"))]
+#[derive(Eq, PartialEq)]
+pub struct CancelRequestBuf {
+	inner: CancelRequest,
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl CancelRequestBuf {
+	pub fn new() -> CancelRequestBuf {
+		CancelRequestBuf {
+			inner: CancelRequest {
+				handle: Handle(0),
+			},
+		}
+	}
+
+	pub fn set_handle(&mut self, handle: Handle) {
+		self.inner.handle = handle
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl AsRef<CancelRequest> for CancelRequestBuf {
+	fn as_ref(&self) -> &CancelRequest {
+		&self.inner
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl Clone for CancelRequestBuf {
+	fn clone(&self) -> Self {
+		CancelRequestBuf {
+			inner: CancelRequest {
+				handle: self.inner.handle,
+			},
+		}
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl fmt::Debug for CancelRequestBuf {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		f.debug_struct("CancelRequestBuf")
+			.field("handle", &self.inner.handle)
+			.finish()
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl core::ops::Deref for CancelRequestBuf {
+	type Target = CancelRequest;
+	fn deref(&self) -> &CancelRequest {
+		&self.inner
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl PartialEq<CancelRequest> for CancelRequestBuf {
+	fn eq(&self, other: &CancelRequest) -> bool {
+		self.inner == *other
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl PartialEq<CancelRequestBuf> for CancelRequest {
+	fn eq(&self, other: &CancelRequestBuf) -> bool {
+		*self == other.inner
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl From<&CancelRequest> for CancelRequestBuf {
+	fn from(request: &CancelRequest) -> Self {
+		CancelRequestBuf {
+			inner: CancelRequest {
+				handle: request.handle,
+			},
+		}
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl io::Encode for CancelRequestBuf {
+	fn encode<W: io::Write>(
+		&self,
+		w: &mut io::Writer<W>,
+	) -> Result<(), io::EncodeError<W::Error>> {
+		self.as_ref().encode(w)
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl io::Decode for CancelRequestBuf {
+	fn decode<R: io::Read>(
+		r: &mut io::Reader<R>,
+	) -> Result<Self, io::DecodeError<R::Error>> {
+		let _proc_no = ProcedureNumber::decode(r)?;
+		// FIXME: check procedure number is CANCEL
+		let handle = Handle::decode(r)?;
+
+		Ok(CancelRequestBuf {
+			inner: CancelRequest { handle },
+		})
+	}
+}
+
+// }}}
+
+// CancelReply {{{
+
+#[derive(Eq, PartialEq)]
+pub struct CancelReply {
+	_p: (),
+}
+
+impl fmt::Debug for CancelReply {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		f.debug_struct("CancelReply").finish()
+	}
+}
+
+impl io::Encode for CancelReply {
+	fn encode<W: io::Write>(
+		&self,
+		w: &mut io::Writer<W>,
+	) -> Result<(), io::EncodeError<W::Error>> {
+		Word::new(0).encode(w)
+	}
+}
+
+// }}}
+
+// CancelReplyBuf {{{
+
+#[cfg(any(doc, feature = "alloc"))]
+#[derive(Eq, PartialEq)]
+pub struct CancelReplyBuf {
+	inner: CancelReply,
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl CancelReplyBuf {
+	pub fn new() -> CancelReplyBuf {
+		CancelReplyBuf {
+			inner: CancelReply { _p: () }
+		}
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl AsRef<CancelReply> for CancelReplyBuf {
+	fn as_ref(&self) -> &CancelReply {
+		&self.inner
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl Clone for CancelReplyBuf {
+	fn clone(&self) -> Self {
+		CancelReplyBuf::new()
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl fmt::Debug for CancelReplyBuf {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		f.debug_struct("CancelReplyBuf").finish()
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl core::ops::Deref for CancelReplyBuf {
+	type Target = CancelReply;
+	fn deref(&self) -> &CancelReply {
+		&self.inner
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl PartialEq<CancelReply> for CancelReplyBuf {
+	fn eq(&self, _other: &CancelReply) -> bool {
+		true
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl PartialEq<CancelReplyBuf> for CancelReply {
+	fn eq(&self, _other: &CancelReplyBuf) -> bool {
+		true
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl From<&CancelReply> for CancelReplyBuf {
+	fn from(_reply: &CancelReply) -> Self {
+		CancelReplyBuf::new()
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl io::Encode for CancelReplyBuf {
+	fn encode<W: io::Write>(
+		&self,
+		w: &mut io::Writer<W>,
+	) -> Result<(), io::EncodeError<W::Error>> {
+		self.as_ref().encode(w)
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl io::Decode for CancelReplyBuf {
+	fn decode<R: io::Read>(
+		r: &mut io::Reader<R>,
+	) -> Result<Self, io::DecodeError<R::Error>> {
+		let _dummy = Word::decode(r)?;
+		Ok(CancelReplyBuf::new())
+	}
+}
+
+// }}}
+
+// }}}
+
 impl io::Decode for crate::Range {
 	fn decode<R: io::Read>(
 		r: &mut io::Reader<R>,
