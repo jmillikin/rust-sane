@@ -430,13 +430,24 @@ impl Decode for Option<CString> {
 		}
 		vec.resize(len, 0u8);
 		r.read_bytes(&mut vec)?;
-		match CString::from_vec_with_nul(vec) {
-			Ok(v) => Ok(Some(v)),
-			Err(_) => Err(DecodeError {
-				kind: DecodeErrorKind::InvalidString,
-			}),
+
+		if let Some(cstring) = cstring_from_vec_until_nul(vec) {
+			return Ok(Some(cstring));
 		}
+		Err(DecodeError {
+			kind: DecodeErrorKind::InvalidString,
+		})
 	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+fn cstring_from_vec_until_nul(mut bytes: Vec<u8>) -> Option<CString> {
+	let nul_idx = bytes.iter().position(|&b| b == 0)?;
+	let new_len = nul_idx + 1;
+	if new_len < bytes.len() {
+		bytes.truncate(new_len);
+	}
+	Some(unsafe { CString::from_vec_with_nul_unchecked(bytes) })
 }
 
 // }}}

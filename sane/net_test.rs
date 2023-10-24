@@ -66,7 +66,7 @@ macro_rules! decode_err {
 }
 
 macro_rules! assert_decode_eq {
-	($expect_value:expr, $bytes:expr) => {{
+	($expect_value:expr, $bytes:expr $(,)?) => {{
 		let value = decode_ok!($bytes);
 		let expect_value = $expect_value;
 		fn unify_types<T>(_: &T, _: &T) {}
@@ -88,7 +88,7 @@ macro_rules! encode_ok {
 }
 
 macro_rules! assert_encode_eq {
-	($value:expr, $expect_bytes:expr) => {
+	($value:expr, $expect_bytes:expr $(,)?) => {
 		let bytes = encode_ok!($value);
 		assert_eq!(bytes, $expect_bytes);
 	};
@@ -271,12 +271,15 @@ fn strings() {
 	// (char*)("abc") encodes as len=4 data="abc\x00"
 	assert_encode_eq!(cstr(b"abc\x00"), b"\x00\x00\x00\x04abc\x00");
 
+	// Strings are terminated by an embedded NUL, to match behavior of
+	// libsane.so and the existing application ecosystem.
+	assert_decode_eq!(
+		CString::from(cstr(b"abc\x00")),
+		b"\x00\x00\x00\x06abc\x00d\x00",
+	);
+
 	// missing NUL
 	let err = decode_err!(CString, b"\x00\x00\x00\x01a");
-	assert!(format!("{:?}", err).contains("InvalidString"));
-
-	// NUL before final byte
-	let err = decode_err!(CString, b"\x00\x00\x00\x02\x00\x00");
 	assert!(format!("{:?}", err).contains("InvalidString"));
 }
 
