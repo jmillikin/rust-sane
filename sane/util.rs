@@ -328,23 +328,24 @@ impl From<DeviceRef<'_>> for DeviceBuf {
 
 // }}}
 
-// Devices {{{
+// DevicesRef {{{
 
-pub struct Devices<'a> {
+#[derive(Clone, Copy)]
+pub struct DevicesRef<'a> {
 	devices: &'a *const crate::Device,
 }
 
-impl fmt::Debug for Devices<'_> {
+impl fmt::Debug for DevicesRef<'_> {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		f.debug_list().entries(self).finish()
 	}
 }
 
-impl<'a> Devices<'a> {
+impl<'a> DevicesRef<'a> {
 	pub unsafe fn from_ptr(
 		ptr: *const *const crate::Device,
-	) -> Devices<'a> {
-		Devices { devices: &*ptr }
+	) -> DevicesRef<'a> {
+		DevicesRef { devices: &*ptr }
 	}
 
 	pub fn iter(&self) -> DevicesIter<'a> {
@@ -352,7 +353,15 @@ impl<'a> Devices<'a> {
 	}
 }
 
-impl<'a> IntoIterator for &Devices<'a> {
+impl Eq for DevicesRef<'_> {}
+
+impl PartialEq for DevicesRef<'_> {
+	fn eq(&self, other: &DevicesRef) -> bool {
+		iter_eq(self, other)
+	}
+}
+
+impl<'a> IntoIterator for &DevicesRef<'a> {
 	type Item = DeviceRef<'a>;
 	type IntoIter = DevicesIter<'a>;
 
@@ -436,16 +445,12 @@ impl DevicesBuf {
 		self.device_ptrs.push(ptr::null());
 	}
 
-	pub fn devices(&self) -> Devices {
-		Devices { devices: &self.device_ptrs[0] }
-	}
-
 	pub fn as_ptr(&self) -> *const *const crate::Device {
 		self.device_ptrs.as_ptr()
 	}
 
 	pub fn iter<'a>(&'a self) -> DevicesIter<'a> {
-		self.devices().iter()
+		DevicesIter { devices: &self.device_ptrs[0] }
 	}
 }
 
@@ -453,7 +458,7 @@ impl DevicesBuf {
 impl Clone for DevicesBuf {
 	fn clone(&self) -> Self {
 		let mut cloned = DevicesBuf::new();
-		for device in self.devices().iter() {
+		for device in self.iter() {
 			cloned.push(DeviceBuf::from(device));
 		}
 		cloned
@@ -463,7 +468,7 @@ impl Clone for DevicesBuf {
 #[cfg(any(doc, feature = "alloc"))]
 impl fmt::Debug for DevicesBuf {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		self.devices().fmt(f)
+		f.debug_list().entries(self).finish()
 	}
 }
 

@@ -92,7 +92,7 @@ fn util_devices_iter() {
 	raw.r#type = StringConst::from_c_str(CSTR_DEV_TYPE);
 
 	let raw_devices: &[*const _] = &[&raw, ptr::null()];
-	let devices = unsafe { util::Devices::from_ptr(raw_devices.as_ptr()) };
+	let devices = unsafe { util::DevicesRef::from_ptr(raw_devices.as_ptr()) };
 
 	assert_eq!(
 		format!("{:#?}", devices),
@@ -161,7 +161,7 @@ fn util_devices_buf() {
 		),
 	);
 
-	let devices = unsafe { util::Devices::from_ptr(devices_buf.as_ptr()) };
+	let devices = unsafe { util::DevicesRef::from_ptr(devices_buf.as_ptr()) };
 	let devices_vec: Vec<_> = devices.into_iter().collect();
 
 	assert_eq!(devices_vec.len(), 2);
