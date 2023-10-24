@@ -895,3 +895,42 @@ fn open_reply() {
 	let decoded: net::OpenReplyBuf = decode_ok!(bytes);
 	assert_eq!(reply_buf, decoded);
 }
+
+#[test]
+fn close_request() {
+	let mut request_buf = net::CloseRequestBuf::new();
+	request_buf.set_handle(net::Handle(0x11223344));
+	let request = request_buf.as_ref();
+
+	assert_eq!(
+		format!("{:#?}", request),
+		concat!(
+			"CloseRequest {\n",
+			"    handle: Handle(287454020),\n",
+			"}",
+		),
+	);
+
+	let bytes = encode_ok!(&request);
+	assert_eq!(bytes, concat_bytes_!(
+		[0, 0, 0, 3],             // SANE_NET_CLOSE
+		[0x11, 0x22, 0x33, 0x44], // handle
+	));
+
+	let decoded: net::CloseRequestBuf = decode_ok!(bytes);
+	assert_eq!(request_buf, decoded);
+}
+
+#[test]
+fn close_reply() {
+	let reply_buf = net::CloseReplyBuf::new();
+	let reply = reply_buf.as_ref();
+
+	assert_eq!(format!("{:#?}", reply), "CloseReply");
+
+	let bytes = encode_ok!(reply);
+	assert_eq!(bytes, &[0, 0, 0, 0]);
+
+	let decoded: net::CloseReplyBuf = decode_ok!(bytes);
+	assert_eq!(reply_buf, decoded);
+}
