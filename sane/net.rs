@@ -217,16 +217,34 @@ impl io::Encode for crate::Parameters {
 	}
 }
 
-impl<T: AsRef<util::Device>> io::Encode for T {
+impl io::Encode for util::Device {
 	fn encode<W: io::Write>(
 		&self,
 		w: &mut io::Writer<W>,
 	) -> Result<(), io::EncodeError<W::Error>> {
-		let dev = self.as_ref();
-		dev.name().encode(w)?;
-		dev.vendor().encode(w)?;
-		dev.model().encode(w)?;
-		dev.kind().encode(w)
+		self.name().encode(w)?;
+		self.vendor().encode(w)?;
+		self.model().encode(w)?;
+		self.kind().encode(w)
+	}
+}
+
+impl io::Encode for util::DeviceRef<'_> {
+	fn encode<W: io::Write>(
+		&self,
+		w: &mut io::Writer<W>,
+	) -> Result<(), io::EncodeError<W::Error>> {
+		self.as_ref().encode(w)
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl io::Encode for util::DeviceBuf {
+	fn encode<W: io::Write>(
+		&self,
+		w: &mut io::Writer<W>,
+	) -> Result<(), io::EncodeError<W::Error>> {
+		self.as_ref().encode(w)
 	}
 }
 

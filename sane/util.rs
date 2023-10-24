@@ -60,10 +60,6 @@ struct DeviceInner<'a> {
 	kind: &'a CStr,
 }
 
-impl AsRef<Device> for Device {
-	fn as_ref(&self) -> &Device { self }
-}
-
 impl fmt::Debug for Device {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		self.inner.fmt(f, "Device")
@@ -98,7 +94,7 @@ impl<'a> DeviceInner<'a> {
 			.finish()
 	}
 
-	fn as_device(&self) -> &'a Device {
+	fn as_ref(&self) -> &'a Device {
 		unsafe {
 			let ptr: *const DeviceInner = self;
 			&*(ptr.cast())
@@ -130,7 +126,7 @@ impl<'a> DeviceRef<'a> {
 
 impl<'a> AsRef<Device> for DeviceRef<'a> {
 	fn as_ref(&self) -> &Device {
-		self.inner.as_device()
+		self.inner.as_ref()
 	}
 }
 
@@ -143,7 +139,7 @@ impl fmt::Debug for DeviceRef<'_> {
 impl<'a> core::ops::Deref for DeviceRef<'a> {
 	type Target = Device;
 	fn deref(&self) -> &Device {
-		self.inner.as_device()
+		self.inner.as_ref()
 	}
 }
 
@@ -218,7 +214,7 @@ impl DeviceBuf {
 #[cfg(any(doc, feature = "alloc"))]
 impl AsRef<Device> for DeviceBuf {
 	fn as_ref(&self) -> &Device {
-		self.inner.as_device()
+		self.inner.as_ref()
 	}
 }
 
@@ -240,7 +236,7 @@ impl fmt::Debug for DeviceBuf {
 impl core::ops::Deref for DeviceBuf {
 	type Target = Device;
 	fn deref(&self) -> &Device {
-		self.inner.as_device()
+		self.inner.as_ref()
 	}
 }
 
@@ -302,7 +298,7 @@ impl From<&Device> for DeviceBuf {
 #[cfg(any(doc, feature = "alloc"))]
 impl From<DeviceRef<'_>> for DeviceBuf {
 	fn from(dev: DeviceRef) -> DeviceBuf {
-		Self::from(dev.inner.as_device())
+		Self::from(dev.inner.as_ref())
 	}
 }
 
