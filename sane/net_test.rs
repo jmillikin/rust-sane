@@ -745,3 +745,96 @@ fn init_reply() {
 	let decoded: net::InitReplyBuf = decode_ok!(bytes);
 	assert_eq!(reply_buf, decoded);
 }
+
+#[test]
+fn get_devices_request() {
+	let request_buf = net::GetDevicesRequestBuf::new();
+	let request = request_buf.as_ref();
+
+	assert_eq!(
+		format!("{:#?}", request),
+		"GetDevicesRequest",
+	);
+
+	let bytes = encode_ok!(request);
+	assert_eq!(bytes, concat_bytes_!(
+		[0, 0, 0, 1], // SANE_NET_GET_DEVICES
+	));
+
+	let decoded: net::GetDevicesRequestBuf = decode_ok!(bytes);
+	assert_eq!(request_buf, decoded);
+}
+
+#[test]
+fn get_devices_reply() {
+	const CSTR_DEV_NAME_2: &CStr = cstr(b"device-name-2\x00");
+
+	let device_1 = {
+		let mut dev = util::DeviceBuf::new(CSTR_DEV_NAME);
+		dev.set_vendor(CSTR_DEV_VENDOR);
+		dev.set_model(CSTR_DEV_MODEL);
+		dev.set_kind(CSTR_DEV_TYPE);
+		dev
+	};
+	let device_2 = util::DeviceBuf::new(CSTR_DEV_NAME_2);
+
+	let mut reply_buf = net::GetDevicesReplyBuf::new();
+	reply_buf.set_status(sane::Status::ACCESS_DENIED);
+	reply_buf.set_devices([device_1, device_2]);
+	let reply = reply_buf.as_ref();
+
+	assert_eq!(
+		format!("{:#?}", reply),
+		concat!(
+			"GetDevicesReply {\n",
+			"    status: SANE_STATUS_ACCESS_DENIED,\n",
+			"    devices: [\n",
+			"        Device {\n",
+			"            name: \"device-name\",\n",
+			"            vendor: \"device-vendor\",\n",
+			"            model: \"device-model\",\n",
+			"            kind: \"device-type\",\n",
+			"        },\n",
+			"        Device {\n",
+			"            name: \"device-name-2\",\n",
+			"            vendor: \"\",\n",
+			"            model: \"\",\n",
+			"            kind: \"\",\n",
+			"        },\n",
+			"    ],\n",
+			"}",
+		),
+	);
+
+	let bytes = encode_ok!(reply);
+	assert_eq!(bytes, concat_bytes_!(
+		[0, 0, 0, 11], // Status::ACCESS_DENIED
+
+		[0, 0, 0, 2], // device_list.len()
+
+		[0, 0, 0, 0], // device_list[0].is_null()
+		[0, 0, 0, 12],
+		b"device-name\x00",
+		[0, 0, 0, 14],
+		b"device-vendor\x00",
+		[0, 0, 0, 13],
+		b"device-model\x00",
+		[0, 0, 0, 12],
+		b"device-type\x00",
+
+		[0, 0, 0, 0], // device_list[1].is_null()
+		[0, 0, 0, 14],
+		b"device-name-2\x00",
+		[0, 0, 0, 1],
+		b"\x00",
+		[0, 0, 0, 1],
+		b"\x00",
+		[0, 0, 0, 1],
+		b"\x00",
+
+		[0, 0, 0, 1], // device_list[2].is_null()
+	));
+
+	let decoded: net::GetDevicesReplyBuf = decode_ok!(bytes);
+	assert_eq!(reply_buf, decoded);
+}
