@@ -43,7 +43,8 @@ fn util_device() {
 	raw.model = StringConst::from_c_str(CSTR_DEV_MODEL);
 	raw.r#type = StringConst::from_c_str(CSTR_DEV_TYPE);
 
-	let device = unsafe { util::Device::from_ptr(&raw) };
+	let device_ref = unsafe { util::DeviceRef::from_ptr(&raw) };
+	let device = device_ref.as_ref();
 
 	assert_eq!(device.name(), CSTR_DEV_NAME);
 	assert_eq!(device.vendor(), CSTR_DEV_VENDOR);
@@ -97,7 +98,7 @@ fn util_devices_iter() {
 		format!("{:#?}", devices),
 		concat!(
 			"[\n",
-			"    Device {\n",
+			"    DeviceRef {\n",
 			"        name: \"device-name\",\n",
 			"        vendor: \"device-vendor\",\n",
 			"        model: \"device-model\",\n",
@@ -113,7 +114,7 @@ fn util_devices_iter() {
 	assert_eq!(
 		format!("{:#?}", devices_vec[0]),
 		concat!(
-			"Device {\n",
+			"DeviceRef {\n",
 			"    name: \"device-name\",\n",
 			"    vendor: \"device-vendor\",\n",
 			"    model: \"device-model\",\n",
@@ -125,9 +126,9 @@ fn util_devices_iter() {
 
 #[test]
 fn util_devices_buf() {
-	let mut buf = util::DevicesBuf::new();
+	let mut devices_buf = util::DevicesBuf::new();
 
-	buf.push({
+	devices_buf.push({
 		let mut dev = util::DeviceBuf::new(CSTR_DEV_NAME);
 		dev.set_vendor(CSTR_DEV_VENDOR);
 		dev.set_model(CSTR_DEV_MODEL);
@@ -136,21 +137,21 @@ fn util_devices_buf() {
 	});
 
 	const CSTR_DEV_NAME_2: &CStr = cstr(b"device-name-2\x00");
-	buf.push(util::DeviceBuf::new(CSTR_DEV_NAME_2));
+	devices_buf.push(util::DeviceBuf::new(CSTR_DEV_NAME_2));
 
-	assert_eq!(buf.len(), 2);
+	assert_eq!(devices_buf.len(), 2);
 
 	assert_eq!(
-		format!("{:#?}", buf),
+		format!("{:#?}", devices_buf),
 		concat!(
 			"[\n",
-			"    Device {\n",
+			"    DeviceRef {\n",
 			"        name: \"device-name\",\n",
 			"        vendor: \"device-vendor\",\n",
 			"        model: \"device-model\",\n",
 			"        kind: \"device-type\",\n",
 			"    },\n",
-			"    Device {\n",
+			"    DeviceRef {\n",
 			"        name: \"device-name-2\",\n",
 			"        vendor: \"\",\n",
 			"        model: \"\",\n",
@@ -160,27 +161,19 @@ fn util_devices_buf() {
 		),
 	);
 
-	let devices = unsafe { util::Devices::from_ptr(buf.as_ptr()) };
+	let devices = unsafe { util::Devices::from_ptr(devices_buf.as_ptr()) };
 	let devices_vec: Vec<_> = devices.into_iter().collect();
 
 	assert_eq!(devices_vec.len(), 2);
 
-	assert_eq!(devices_vec[0].name(), CSTR_DEV_NAME);
-	assert_eq!(devices_vec[0].vendor(), CSTR_DEV_VENDOR);
-	assert_eq!(devices_vec[0].model(), CSTR_DEV_MODEL);
-	assert_eq!(devices_vec[0].kind(), CSTR_DEV_TYPE);
+	let mut devices_buf_2 = util::DevicesBuf::new();
+	devices_buf_2.push(devices_vec[0].into());
+	devices_buf_2.push(devices_vec[1].into());
 
-	assert_eq!(devices_vec[1].name(), CSTR_DEV_NAME_2);
-	assert_eq!(devices_vec[1].vendor(), CSTR_EMPTY);
-	assert_eq!(devices_vec[1].model(), CSTR_EMPTY);
-	assert_eq!(devices_vec[1].kind(), CSTR_EMPTY);
+	assert_eq!(devices_buf, devices_buf_2);
 
-	let devices_vec_2: Vec<_> = buf.devices().into_iter().collect();
-	assert_eq!(devices_vec_2.len(), 2);
-
-	let cloned = buf.clone();
-	let devices_vec_3: Vec<_> = cloned.devices().iter().collect();
-	assert_eq!(devices_vec_3[0].name(), devices_vec[0].name());
+	let cloned = devices_buf.clone();
+	assert_eq!(devices_buf, cloned);
 }
 
 #[test]

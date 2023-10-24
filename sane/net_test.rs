@@ -341,8 +341,8 @@ fn util_device() {
 		b"device-type\x00",
 	));
 
-	let decoded_buf: util::DeviceBuf = decode_ok!(bytes);
-	assert_eq!(device_buf.to_device(), decoded_buf.to_device());
+	let decoded: util::DeviceBuf = decode_ok!(bytes);
+	assert_eq!(device_buf, decoded);
 }
 
 #[test]

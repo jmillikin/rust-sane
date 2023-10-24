@@ -40,43 +40,122 @@ unsafe fn ref_array_next<T>(t: &T) -> &T {
 	&*((t as *const T).add(1))
 }
 
+#[cfg(any(doc, feature = "alloc"))]
+unsafe fn cstr_to_static(cstr: &CStr) -> &'static CStr {
+	core::mem::transmute(cstr)
+}
+
 // Device {{{
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct Device<'a> {
+#[derive(Eq, PartialEq)]
+pub struct Device {
+	inner: DeviceInner<'static>,
+}
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+struct DeviceInner<'a> {
 	name: &'a CStr,
 	vendor: &'a CStr,
 	model: &'a CStr,
 	kind: &'a CStr,
 }
 
-impl Device<'_> {
-	pub fn name(&self) -> &CStr {
-		self.name
-	}
+impl AsRef<Device> for Device {
+	fn as_ref(&self) -> &Device { self }
+}
 
-	pub fn vendor(&self) -> &CStr {
-		self.vendor
-	}
-
-	pub fn model(&self) -> &CStr {
-		self.model
-	}
-
-	pub fn kind(&self) -> &CStr {
-		self.kind
+impl fmt::Debug for Device {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		self.inner.fmt(f, "Device")
 	}
 }
 
-impl<'a> Device<'a> {
-	pub unsafe fn from_ptr(ptr: *const crate::Device) -> Device<'a> {
+impl Device {
+	pub fn name(&self) -> &CStr {
+		self.inner.name
+	}
+
+	pub fn vendor(&self) -> &CStr {
+		self.inner.vendor
+	}
+
+	pub fn model(&self) -> &CStr {
+		self.inner.model
+	}
+
+	pub fn kind(&self) -> &CStr {
+		self.inner.kind
+	}
+}
+
+impl<'a> DeviceInner<'a> {
+	fn fmt(&self, f: &mut fmt::Formatter, struct_name: &str) -> fmt::Result {
+		f.debug_struct(struct_name)
+			.field("name", &self.name)
+			.field("vendor", &self.vendor)
+			.field("model", &self.model)
+			.field("kind", &self.kind)
+			.finish()
+	}
+
+	fn as_device(&self) -> &'a Device {
+		unsafe {
+			let ptr: *const DeviceInner = self;
+			&*(ptr.cast())
+		}
+	}
+}
+
+// }}}
+
+// DeviceRef {{{
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+pub struct DeviceRef<'a> {
+	inner: DeviceInner<'a>,
+}
+
+impl<'a> DeviceRef<'a> {
+	pub unsafe fn from_ptr(ptr: *const crate::Device) -> DeviceRef<'a> {
 		let raw = &*ptr;
-		Device {
+		let inner = DeviceInner {
 			name: raw.name.to_c_str().unwrap_or(CSTR_EMPTY),
 			vendor: raw.vendor.to_c_str().unwrap_or(CSTR_EMPTY),
 			model: raw.model.to_c_str().unwrap_or(CSTR_EMPTY),
 			kind: raw.r#type.to_c_str().unwrap_or(CSTR_EMPTY),
-		}
+		};
+		DeviceRef { inner }
+	}
+}
+
+impl<'a> AsRef<Device> for DeviceRef<'a> {
+	fn as_ref(&self) -> &Device {
+		self.inner.as_device()
+	}
+}
+
+impl fmt::Debug for DeviceRef<'_> {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		self.inner.fmt(f, "DeviceRef")
+	}
+}
+
+impl<'a> core::ops::Deref for DeviceRef<'a> {
+	type Target = Device;
+	fn deref(&self) -> &Device {
+		self.inner.as_device()
+	}
+}
+
+impl PartialEq<Device> for DeviceRef<'_> {
+	fn eq(&self, other: &Device) -> bool {
+		self.inner == other.inner
+	}
+}
+
+impl PartialEq<DeviceRef<'_>> for Device {
+	fn eq(&self, other: &DeviceRef) -> bool {
+		self.inner == other.inner
 	}
 }
 
@@ -85,8 +164,8 @@ impl<'a> Device<'a> {
 // DeviceBuf {{{
 
 #[cfg(any(doc, feature = "alloc"))]
-#[derive(Clone, Debug)]
 pub struct DeviceBuf {
+	inner: DeviceInner<'static>,
 	name: CString,
 	vendor: Cow<'static, CStr>,
 	model: Cow<'static, CStr>,
@@ -96,88 +175,134 @@ pub struct DeviceBuf {
 #[cfg(any(doc, feature = "alloc"))]
 impl DeviceBuf {
 	pub fn new(name: impl Into<CString>) -> DeviceBuf {
+		let name = name.into();
+		let inner = DeviceInner {
+			name: unsafe { cstr_to_static(name.as_c_str()) },
+			vendor: CSTR_EMPTY,
+			model: CSTR_EMPTY,
+			kind: CSTR_EMPTY,
+		};
 		DeviceBuf {
-			name: name.into(),
+			inner,
+			name,
 			vendor: Cow::Borrowed(CSTR_EMPTY),
 			model: Cow::Borrowed(CSTR_EMPTY),
 			kind: Cow::Borrowed(CSTR_EMPTY),
 		}
 	}
 
-	pub fn to_device(&self) -> Device {
-		Device {
-			name: self.name.as_ref(),
-			vendor: self.vendor.as_ref(),
-			model: self.model.as_ref(),
-			kind: self.kind.as_ref(),
-		}
-	}
-
-	pub fn name(&self) -> &CStr {
-		&self.name
-	}
-
 	pub fn set_name(&mut self, name: impl Into<CString>) {
 		self.name = name.into();
-	}
-
-	pub fn vendor(&self) -> &CStr {
-		self.vendor.as_ref()
+		self.inner.name = unsafe { cstr_to_static(self.name.as_c_str()) };
 	}
 
 	pub fn set_vendor(&mut self, vendor: impl Into<CString>) {
-		self.vendor = Cow::Owned(vendor.into());
-	}
-
-	pub fn model(&self) -> &CStr {
-		self.model.as_ref()
+		let vendor = vendor.into();
+		self.inner.vendor = unsafe { cstr_to_static(vendor.as_c_str()) };
+		self.vendor = Cow::Owned(vendor);
 	}
 
 	pub fn set_model(&mut self, model: impl Into<CString>) {
-		self.model = Cow::Owned(model.into());
-	}
-
-	pub fn kind(&self) -> &CStr {
-		self.kind.as_ref()
+		let model = model.into();
+		self.inner.model = unsafe { cstr_to_static(model.as_c_str()) };
+		self.model = Cow::Owned(model);
 	}
 
 	pub fn set_kind(&mut self, kind: impl Into<CString>) {
-		self.kind = Cow::Owned(kind.into());
+		let kind = kind.into();
+		self.inner.kind = unsafe { cstr_to_static(kind.as_c_str()) };
+		self.kind = Cow::Owned(kind);
 	}
 }
 
 #[cfg(any(doc, feature = "alloc"))]
-impl From<Device<'_>> for DeviceBuf {
-	fn from(dev: Device) -> DeviceBuf {
-		Self::from(&dev)
+impl AsRef<Device> for DeviceBuf {
+	fn as_ref(&self) -> &Device {
+		self.inner.as_device()
 	}
 }
 
 #[cfg(any(doc, feature = "alloc"))]
-impl From<&Device<'_>> for DeviceBuf {
+impl Clone for DeviceBuf {
+	fn clone(&self) -> Self {
+		DeviceBuf::from(self.as_ref())
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl fmt::Debug for DeviceBuf {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		self.inner.fmt(f, "DeviceBuf")
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl core::ops::Deref for DeviceBuf {
+	type Target = Device;
+	fn deref(&self) -> &Device {
+		self.inner.as_device()
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl Eq for DeviceBuf {}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl PartialEq for DeviceBuf {
+	fn eq(&self, other: &DeviceBuf) -> bool {
+		self.inner == other.inner
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl PartialEq<Device> for DeviceBuf {
+	fn eq(&self, other: &Device) -> bool {
+		self.inner == other.inner
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl PartialEq<DeviceBuf> for Device {
+	fn eq(&self, other: &DeviceBuf) -> bool {
+		self.inner == other.inner
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl PartialEq<DeviceRef<'_>> for DeviceBuf {
+	fn eq(&self, other: &DeviceRef) -> bool {
+		self.inner == other.inner
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl PartialEq<DeviceBuf> for DeviceRef<'_> {
+	fn eq(&self, other: &DeviceBuf) -> bool {
+		self.inner == other.inner
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl From<&Device> for DeviceBuf {
 	fn from(dev: &Device) -> DeviceBuf {
-		let vendor = if dev.vendor.is_empty() {
-			Cow::Borrowed(CSTR_EMPTY)
-		} else {
-			Cow::Owned(dev.vendor.into())
+		let mut buf = DeviceBuf::new(dev.name());
+		if !dev.vendor().is_empty() {
+			buf.set_vendor(dev.vendor());
 		};
-		let model = if dev.model.is_empty() {
-			Cow::Borrowed(CSTR_EMPTY)
-		} else {
-			Cow::Owned(dev.model.into())
+		if !dev.model().is_empty() {
+			buf.set_model(dev.model());
 		};
-		let kind = if dev.kind.is_empty() {
-			Cow::Borrowed(CSTR_EMPTY)
-		} else {
-			Cow::Owned(dev.kind.into())
+		if !dev.kind().is_empty() {
+			buf.set_kind(dev.kind());
 		};
+		buf
+	}
+}
 
-		DeviceBuf {
-			name: dev.name.into(),
-			vendor,
-			model,
-			kind,
-		}
+#[cfg(any(doc, feature = "alloc"))]
+impl From<DeviceRef<'_>> for DeviceBuf {
+	fn from(dev: DeviceRef) -> DeviceBuf {
+		Self::from(dev.inner.as_device())
 	}
 }
 
@@ -208,7 +333,7 @@ impl<'a> Devices<'a> {
 }
 
 impl<'a> IntoIterator for &Devices<'a> {
-	type Item = Device<'a>;
+	type Item = DeviceRef<'a>;
 	type IntoIter = DevicesIter<'a>;
 
 	fn into_iter(self) -> DevicesIter<'a> {
@@ -225,13 +350,13 @@ pub struct DevicesIter<'a> {
 }
 
 impl<'a> Iterator for DevicesIter<'a> {
-	type Item = Device<'a>;
+	type Item = DeviceRef<'a>;
 
-	fn next(&mut self) -> Option<Device<'a>> {
+	fn next(&mut self) -> Option<DeviceRef<'a>> {
 		Some(unsafe {
 			let device_ptr: *const _ = self.devices.as_ref()?;
 			self.devices = ref_array_next(self.devices);
-			Device::from_ptr(device_ptr)
+			DeviceRef::from_ptr(device_ptr)
 		})
 	}
 }
@@ -245,24 +370,6 @@ pub struct DevicesBuf {
 	devices: Vec<Box<crate::Device>>,
 	device_ptrs: Vec<*const crate::Device>,
 	strings: Vec<CString>,
-}
-
-#[cfg(any(doc, feature = "alloc"))]
-impl Clone for DevicesBuf {
-	fn clone(&self) -> Self {
-		let mut cloned = DevicesBuf::new();
-		for device in self.devices().iter() {
-			cloned.push(DeviceBuf::from(device));
-		}
-		cloned
-	}
-}
-
-#[cfg(any(doc, feature = "alloc"))]
-impl fmt::Debug for DevicesBuf {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		self.devices().fmt(f)
-	}
 }
 
 #[cfg(any(doc, feature = "alloc"))]
@@ -315,6 +422,59 @@ impl DevicesBuf {
 
 	pub fn as_ptr(&self) -> *const *const crate::Device {
 		self.device_ptrs.as_ptr()
+	}
+
+	pub fn iter<'a>(&'a self) -> DevicesIter<'a> {
+		self.devices().iter()
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl Clone for DevicesBuf {
+	fn clone(&self) -> Self {
+		let mut cloned = DevicesBuf::new();
+		for device in self.devices().iter() {
+			cloned.push(DeviceBuf::from(device));
+		}
+		cloned
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl fmt::Debug for DevicesBuf {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		self.devices().fmt(f)
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl Eq for DevicesBuf {}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl PartialEq for DevicesBuf {
+	fn eq(&self, other: &DevicesBuf) -> bool {
+		let mut x = self.iter();
+		let mut y = other.iter();
+		loop {
+			let x_next = x.next();
+			let y_next = y.next();
+			if x_next != y_next {
+				return false;
+			}
+			if x_next == None {
+				return true;
+			}
+		}
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl<'a> IntoIterator for &'a DevicesBuf {
+	type Item = DeviceRef<'a>;
+	type IntoIter = DevicesIter<'a>;
+
+	fn into_iter(self) -> DevicesIter<'a> {
+		self.iter()
 	}
 }
 
