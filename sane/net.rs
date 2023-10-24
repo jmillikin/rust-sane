@@ -1469,6 +1469,348 @@ impl io::Decode for CloseReplyBuf {
 
 // }}}
 
+// [5.2.5] SANE_NET_GET_OPTION_DESCRIPTORS {{{
+
+// GetOptionDescriptorsRequest {{{
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct GetOptionDescriptorsRequest {
+	handle: Handle,
+}
+
+impl GetOptionDescriptorsRequest {
+	pub fn handle(&self) -> Handle {
+		self.handle
+	}
+}
+
+impl io::Encode for GetOptionDescriptorsRequest {
+	fn encode<W: io::Write>(
+		&self,
+		w: &mut io::Writer<W>,
+	) -> Result<(), io::EncodeError<W::Error>> {
+		ProcedureNumber::GET_OPTION_DESCRIPTORS.encode(w)?;
+		self.handle.encode(w)
+	}
+}
+
+// }}}
+
+// GetOptionDescriptorsRequestBuf {{{
+
+#[cfg(any(doc, feature = "alloc"))]
+#[derive(Eq, PartialEq)]
+pub struct GetOptionDescriptorsRequestBuf {
+	inner: GetOptionDescriptorsRequest,
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl GetOptionDescriptorsRequestBuf {
+	pub fn new() -> GetOptionDescriptorsRequestBuf {
+		GetOptionDescriptorsRequestBuf {
+			inner: GetOptionDescriptorsRequest {
+				handle: Handle(0),
+			},
+		}
+	}
+
+	pub fn set_handle(&mut self, handle: Handle) {
+		self.inner.handle = handle
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl AsRef<GetOptionDescriptorsRequest> for GetOptionDescriptorsRequestBuf {
+	fn as_ref(&self) -> &GetOptionDescriptorsRequest {
+		&self.inner
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl Clone for GetOptionDescriptorsRequestBuf {
+	fn clone(&self) -> Self {
+		GetOptionDescriptorsRequestBuf {
+			inner: GetOptionDescriptorsRequest {
+				handle: self.inner.handle,
+			},
+		}
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl fmt::Debug for GetOptionDescriptorsRequestBuf {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		f.debug_struct("GetOptionDescriptorsRequestBuf")
+			.field("handle", &self.inner.handle)
+			.finish()
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl core::ops::Deref for GetOptionDescriptorsRequestBuf {
+	type Target = GetOptionDescriptorsRequest;
+	fn deref(&self) -> &GetOptionDescriptorsRequest {
+		&self.inner
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl PartialEq<GetOptionDescriptorsRequest> for GetOptionDescriptorsRequestBuf {
+	fn eq(&self, other: &GetOptionDescriptorsRequest) -> bool {
+		self.inner == *other
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl PartialEq<GetOptionDescriptorsRequestBuf> for GetOptionDescriptorsRequest {
+	fn eq(&self, other: &GetOptionDescriptorsRequestBuf) -> bool {
+		*self == other.inner
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl From<&GetOptionDescriptorsRequest> for GetOptionDescriptorsRequestBuf {
+	fn from(request: &GetOptionDescriptorsRequest) -> Self {
+		GetOptionDescriptorsRequestBuf {
+			inner: GetOptionDescriptorsRequest {
+				handle: request.handle,
+			},
+		}
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl io::Encode for GetOptionDescriptorsRequestBuf {
+	fn encode<W: io::Write>(
+		&self,
+		w: &mut io::Writer<W>,
+	) -> Result<(), io::EncodeError<W::Error>> {
+		self.as_ref().encode(w)
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl io::Decode for GetOptionDescriptorsRequestBuf {
+	fn decode<R: io::Read>(
+		r: &mut io::Reader<R>,
+	) -> Result<Self, io::DecodeError<R::Error>> {
+		let _proc_no = ProcedureNumber::decode(r)?;
+		// FIXME: check procedure number is GET_OPTION_DESCRIPTORS
+		let handle = Handle::decode(r)?;
+
+		Ok(GetOptionDescriptorsRequestBuf {
+			inner: GetOptionDescriptorsRequest { handle },
+		})
+	}
+}
+
+// }}}
+
+// GetOptionDescriptorsReply {{{
+
+#[derive(Eq, PartialEq)]
+pub struct GetOptionDescriptorsReply {
+	inner: GetOptionDescriptorsReplyInner<'static>,
+}
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+struct GetOptionDescriptorsReplyInner<'a> {
+	option_descriptors: &'a [&'a util::OptionDescriptor],
+}
+
+impl fmt::Debug for GetOptionDescriptorsReply {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		self.inner.fmt(f, "GetOptionDescriptorsReply")
+	}
+}
+
+impl GetOptionDescriptorsReply {
+	pub fn option_descriptors(&self) -> &[&util::OptionDescriptor] {
+		self.inner.option_descriptors
+	}
+}
+
+impl<'a> GetOptionDescriptorsReplyInner<'a> {
+	fn fmt(&self, f: &mut fmt::Formatter, struct_name: &str) -> fmt::Result {
+		f.debug_struct(struct_name)
+			.field("option_descriptors", &self.option_descriptors)
+			.finish()
+	}
+
+	#[cfg(any(doc, feature = "alloc"))]
+	fn as_ref(&self) -> &'a GetOptionDescriptorsReply {
+		unsafe {
+			let ptr: *const GetOptionDescriptorsReplyInner = self;
+			&*(ptr.cast())
+		}
+	}
+}
+
+impl io::Encode for GetOptionDescriptorsReply {
+	fn encode<W: io::Write>(
+		&self,
+		w: &mut io::Writer<W>,
+	) -> Result<(), io::EncodeError<W::Error>> {
+		Word::new((self.option_descriptors().len() + 1) as u32).encode(w)?;
+		for opt_desc in self.option_descriptors() {
+			w.write_ptr(Some(*opt_desc))?;
+		}
+		w.write_ptr(Option::<&util::OptionDescriptor>::None)
+	}
+}
+
+// }}}
+
+// GetOptionDescriptorsReplyBuf {{{
+
+#[cfg(any(doc, feature = "alloc"))]
+pub struct GetOptionDescriptorsReplyBuf {
+	inner: GetOptionDescriptorsReplyInner<'static>,
+	opt_descs: Vec<util::OptionDescriptorBuf>,
+	opt_desc_refs: Vec<&'static util::OptionDescriptor>,
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl GetOptionDescriptorsReplyBuf {
+	pub fn new() -> GetOptionDescriptorsReplyBuf {
+		GetOptionDescriptorsReplyBuf {
+			inner: GetOptionDescriptorsReplyInner {
+				option_descriptors: &[],
+			},
+			opt_descs: Vec::new(),
+			opt_desc_refs: Vec::new(),
+		}
+	}
+
+	pub fn set_option_descriptors(
+		&mut self,
+		option_descriptors: impl Into<Vec<util::OptionDescriptorBuf>>,
+	) {
+		let opt_descs = option_descriptors.into();
+		self.opt_descs = opt_descs;
+		self.opt_desc_refs.truncate(0);
+		for opt_desc in self.opt_descs.iter() {
+			self.opt_desc_refs.push(unsafe {
+				core::mem::transmute(opt_desc.as_ref())
+			});
+		}
+		self.inner.option_descriptors = unsafe {
+			core::mem::transmute(self.opt_desc_refs.as_slice())
+		};
+	}
+
+	pub fn into_option_descriptors(self) -> Vec<util::OptionDescriptorBuf> {
+		self.opt_descs
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl AsRef<GetOptionDescriptorsReply> for GetOptionDescriptorsReplyBuf {
+	fn as_ref(&self) -> &GetOptionDescriptorsReply {
+		self.inner.as_ref()
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl Clone for GetOptionDescriptorsReplyBuf {
+	fn clone(&self) -> Self {
+		GetOptionDescriptorsReplyBuf::from(self.as_ref())
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl fmt::Debug for GetOptionDescriptorsReplyBuf {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		self.inner.fmt(f, "GetOptionDescriptorsReplyBuf")
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl core::ops::Deref for GetOptionDescriptorsReplyBuf {
+	type Target = GetOptionDescriptorsReply;
+	fn deref(&self) -> &GetOptionDescriptorsReply {
+		self.inner.as_ref()
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl Eq for GetOptionDescriptorsReplyBuf {}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl PartialEq for GetOptionDescriptorsReplyBuf {
+	fn eq(&self, other: &GetOptionDescriptorsReplyBuf) -> bool {
+		self.option_descriptors() == other.option_descriptors()
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl PartialEq<GetOptionDescriptorsReply> for GetOptionDescriptorsReplyBuf {
+	fn eq(&self, other: &GetOptionDescriptorsReply) -> bool {
+		self.option_descriptors() == other.option_descriptors()
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl PartialEq<GetOptionDescriptorsReplyBuf> for GetOptionDescriptorsReply {
+	fn eq(&self, other: &GetOptionDescriptorsReplyBuf) -> bool {
+		self.option_descriptors() == other.option_descriptors()
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl From<&GetOptionDescriptorsReply> for GetOptionDescriptorsReplyBuf {
+	fn from(reply: &GetOptionDescriptorsReply) -> Self {
+		let opt_descs: Vec<util::OptionDescriptorBuf> =
+			reply.option_descriptors()
+				.iter()
+				.map(|&d| d.into())
+				.collect();
+		let mut buf = GetOptionDescriptorsReplyBuf::new();
+		buf.set_option_descriptors(opt_descs);
+		buf
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl io::Encode for GetOptionDescriptorsReplyBuf {
+	fn encode<W: io::Write>(
+		&self,
+		w: &mut io::Writer<W>,
+	) -> Result<(), io::EncodeError<W::Error>> {
+		self.as_ref().encode(w)
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl io::Decode for GetOptionDescriptorsReplyBuf {
+	fn decode<R: io::Read>(
+		r: &mut io::Reader<R>,
+	) -> Result<Self, io::DecodeError<R::Error>> {
+		let opt_descs_len = r.read_size()?;
+		let mut opt_descs = Vec::with_capacity(opt_descs_len);
+		for _ii in 0..opt_descs_len {
+			let is_null = Bool::decode(r)?;
+			if is_null == Bool::TRUE {
+				break;
+			}
+
+			// FIXME: verify NUL termination: there should only be a single
+			//   NULL option descriptor, and it should be at the end of the list
+			//   (ii == opt_descs_len-1)
+
+			opt_descs.push(util::OptionDescriptorBuf::decode(r)?);
+		}
+
+		let mut buf = GetOptionDescriptorsReplyBuf::new();
+		buf.set_option_descriptors(opt_descs);
+		Ok(buf)
+	}
+}
+
+// }}}
+
+// }}}
+
 // [5.2.7] SANE_NET_GET_PARAMETERS {{{
 
 // GetParametersRequest {{{

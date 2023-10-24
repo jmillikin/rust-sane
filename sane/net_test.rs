@@ -936,6 +936,115 @@ fn close_reply() {
 }
 
 #[test]
+fn get_option_descriptors_request() {
+	let mut request_buf = net::GetOptionDescriptorsRequestBuf::new();
+	request_buf.set_handle(net::Handle(0x11223344));
+	let request = request_buf.as_ref();
+
+	assert_eq!(
+		format!("{:#?}", request),
+		concat!(
+			"GetOptionDescriptorsRequest {\n",
+			"    handle: Handle(287454020),\n",
+			"}",
+		),
+	);
+
+	let bytes = encode_ok!(&request);
+	assert_eq!(bytes, concat_bytes_!(
+		[0, 0, 0, 4],             // SANE_NET_GET_OPTION_DESCRIPTORS
+		[0x11, 0x22, 0x33, 0x44], // handle
+	));
+
+	let decoded: net::GetOptionDescriptorsRequestBuf = decode_ok!(bytes);
+	assert_eq!(request_buf, decoded);
+}
+
+#[test]
+fn get_option_descriptors_reply() {
+	const CSTR_OPT_NAME_2: &CStr = cstr(b"option-name-2\x00");
+
+	let mut options = Vec::new();
+	options.push({
+		util::ButtonOptionBuilder::new(CSTR_OPT_NAME)
+			.title(CSTR_OPT_TITLE)
+			.description(CSTR_OPT_DESC)
+			.build()
+	});
+	options.push(util::ButtonOptionBuilder::new(CSTR_OPT_NAME_2).build());
+
+	let mut reply_buf = net::GetOptionDescriptorsReplyBuf::new();
+	reply_buf.set_option_descriptors(options);
+	let reply = reply_buf.as_ref();
+
+	assert_eq!(
+		format!("{:#?}", reply),
+		concat!(
+			"GetOptionDescriptorsReply {\n",
+			"    option_descriptors: [\n",
+			"        OptionDescriptor {\n",
+			"            name: \"option-name\",\n",
+			"            title: \"option-title\",\n",
+			"            description: \"option-description\",\n",
+			"            value_type: SANE_TYPE_BUTTON,\n",
+			"            unit: SANE_UNIT_NONE,\n",
+			"            size: 0,\n",
+			"            capabilities: Capabilities {},\n",
+			"            constraint: None,\n",
+			"        },\n",
+			"        OptionDescriptor {\n",
+			"            name: \"option-name-2\",\n",
+			"            title: \"\",\n",
+			"            description: \"\",\n",
+			"            value_type: SANE_TYPE_BUTTON,\n",
+			"            unit: SANE_UNIT_NONE,\n",
+			"            size: 0,\n",
+			"            capabilities: Capabilities {},\n",
+			"            constraint: None,\n",
+			"        },\n",
+			"    ],\n",
+			"}",
+		),
+	);
+
+	let bytes = encode_ok!(reply);
+	assert_eq!(bytes, concat_bytes_!(
+		[0, 0, 0, 3],  // options_list.len() + 1
+
+		[0, 0, 0, 0],  // options_list[0].is_null()
+		[0, 0, 0, 12], // CSTR_OPT_NAME.len()
+		b"option-name\x00",
+		[0, 0, 0, 13], // CSTR_OPT_TITLE.len()
+		b"option-title\x00",
+		[0, 0, 0, 19], // CSTR_OPT_DESC.len()
+		b"option-description\x00",
+		[0, 0, 0, 4], // ValueType::BUTTON
+		[0, 0, 0, 0], // Unit::NONE
+		[0, 0, 0, 0], // size (ignored for ValueType::BUTTON)
+		[0, 0, 0, 0], // CAP_SOFT_SELECT | CAP_SOFT_DETECT
+		[0, 0, 0, 0], // ConstraintType::NONE
+
+		[0, 0, 0, 0],  // options_list[1].is_null()
+		[0, 0, 0, 14], // CSTR_OPT_NAME_2.len()
+		b"option-name-2\x00",
+		[0, 0, 0, 1], // b"\x00".len()
+		b"\x00",
+		[0, 0, 0, 1], // b"\x00".len()
+		b"\x00",
+		[0, 0, 0, 4], // ValueType::BUTTON
+		[0, 0, 0, 0],
+		[0, 0, 0, 0],
+		[0, 0, 0, 0],
+		[0, 0, 0, 0],
+
+		[0, 0, 0, 1],  // (NULL).is_null()
+	));
+
+	let decoded: net::GetOptionDescriptorsReplyBuf = decode_ok!(bytes);
+	assert_eq!(reply_buf, decoded);
+}
+
+#[test]
 fn get_parameters_request() {
 	let mut request_buf = net::GetParametersRequestBuf::new();
 	request_buf.set_handle(net::Handle(0x11223344));
