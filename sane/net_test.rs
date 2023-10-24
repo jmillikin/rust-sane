@@ -1009,6 +1009,53 @@ fn get_parameters_reply() {
 }
 
 #[test]
+fn start_request() {
+	let mut request_buf = net::StartRequestBuf::new();
+	request_buf.set_handle(net::Handle(0x11223344));
+	let request = request_buf.as_ref();
+
+	assert_eq!(
+		format!("{:#?}", request),
+		concat!(
+			"StartRequest {\n",
+			"    handle: Handle(287454020),\n",
+			"}",
+		),
+	);
+
+	let bytes = encode_ok!(&request);
+	assert_eq!(bytes, concat_bytes_!(
+		[0, 0, 0, 7],             // SANE_NET_START
+		[0x11, 0x22, 0x33, 0x44], // handle
+	));
+
+	let decoded: net::StartRequestBuf = decode_ok!(bytes);
+	assert_eq!(request_buf, decoded);
+}
+
+#[test]
+fn start_reply() {
+	let mut reply_buf = net::StartReplyBuf::new();
+	reply_buf.set_status(sane::Status::ACCESS_DENIED);
+	reply_buf.set_port(0x2233);
+	reply_buf.set_byte_order(net::ByteOrder::LITTLE_ENDIAN);
+	reply_buf.set_resource(cstr(b"start-resource\x00"));
+	let reply = reply_buf.as_ref();
+
+	let bytes = encode_ok!(&reply);
+	assert_eq!(bytes, concat_bytes_!(
+		[0, 0, 0, 11],      // Status::ACCESS_DENIED
+		[0, 0, 0x22, 0x33], // port
+		[0, 0, 0x12, 0x34], // ByteOrder::LITTLE_ENDIAN
+		[0, 0, 0, 15],
+		b"start-resource\x00",
+	));
+
+	let decoded: net::StartReplyBuf = decode_ok!(bytes);
+	assert_eq!(reply_buf, decoded);
+}
+
+#[test]
 fn cancel_request() {
 	let mut request_buf = net::CancelRequestBuf::new();
 	request_buf.set_handle(net::Handle(0x11223344));

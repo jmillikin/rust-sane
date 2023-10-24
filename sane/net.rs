@@ -1143,7 +1143,7 @@ impl fmt::Debug for OpenReplyBuf {
 impl core::ops::Deref for OpenReplyBuf {
 	type Target = OpenReply;
 	fn deref(&self) -> &OpenReply {
-		todo!()
+		self.inner.as_ref()
 	}
 }
 
@@ -1748,6 +1748,360 @@ impl io::Decode for GetParametersReplyBuf {
 		Ok(GetParametersReplyBuf {
 			inner: GetParametersReply { status, parameters },
 		})
+	}
+}
+
+// }}}
+
+// }}}
+
+// [5.2.8] SANE_NET_START {{{
+
+// StartRequest {{{
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct StartRequest {
+	handle: Handle,
+}
+
+impl StartRequest {
+	pub fn handle(&self) -> Handle {
+		self.handle
+	}
+}
+
+impl io::Encode for StartRequest {
+	fn encode<W: io::Write>(
+		&self,
+		w: &mut io::Writer<W>,
+	) -> Result<(), io::EncodeError<W::Error>> {
+		ProcedureNumber::START.encode(w)?;
+		self.handle.encode(w)
+	}
+}
+
+// }}}
+
+// StartRequestBuf {{{
+
+#[cfg(any(doc, feature = "alloc"))]
+#[derive(Eq, PartialEq)]
+pub struct StartRequestBuf {
+	inner: StartRequest,
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl StartRequestBuf {
+	pub fn new() -> StartRequestBuf {
+		StartRequestBuf {
+			inner: StartRequest {
+				handle: Handle(0),
+			},
+		}
+	}
+
+	pub fn set_handle(&mut self, handle: Handle) {
+		self.inner.handle = handle
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl AsRef<StartRequest> for StartRequestBuf {
+	fn as_ref(&self) -> &StartRequest {
+		&self.inner
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl Clone for StartRequestBuf {
+	fn clone(&self) -> Self {
+		StartRequestBuf {
+			inner: StartRequest {
+				handle: self.inner.handle,
+			},
+		}
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl fmt::Debug for StartRequestBuf {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		f.debug_struct("StartRequestBuf")
+			.field("handle", &self.inner.handle)
+			.finish()
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl core::ops::Deref for StartRequestBuf {
+	type Target = StartRequest;
+	fn deref(&self) -> &StartRequest {
+		&self.inner
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl PartialEq<StartRequest> for StartRequestBuf {
+	fn eq(&self, other: &StartRequest) -> bool {
+		self.inner == *other
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl PartialEq<StartRequestBuf> for StartRequest {
+	fn eq(&self, other: &StartRequestBuf) -> bool {
+		*self == other.inner
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl From<&StartRequest> for StartRequestBuf {
+	fn from(request: &StartRequest) -> Self {
+		StartRequestBuf {
+			inner: StartRequest {
+				handle: request.handle,
+			},
+		}
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl io::Encode for StartRequestBuf {
+	fn encode<W: io::Write>(
+		&self,
+		w: &mut io::Writer<W>,
+	) -> Result<(), io::EncodeError<W::Error>> {
+		self.as_ref().encode(w)
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl io::Decode for StartRequestBuf {
+	fn decode<R: io::Read>(
+		r: &mut io::Reader<R>,
+	) -> Result<Self, io::DecodeError<R::Error>> {
+		let _proc_no = ProcedureNumber::decode(r)?;
+		// FIXME: check procedure number is START
+		let handle = Handle::decode(r)?;
+
+		Ok(StartRequestBuf {
+			inner: StartRequest { handle },
+		})
+	}
+}
+
+// }}}
+
+// StartReply {{{
+
+#[derive(Eq, PartialEq)]
+pub struct StartReply {
+	inner: StartReplyInner<'static>,
+}
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+struct StartReplyInner<'a> {
+	status: crate::Status,
+	port: u16,
+	byte_order: ByteOrder,
+	resource: &'a CStr,
+}
+
+impl fmt::Debug for StartReply {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		self.inner.fmt(f, "StartReply")
+	}
+}
+
+impl StartReply {
+	pub fn status(&self) -> crate::Status {
+		self.inner.status
+	}
+
+	pub fn port(&self) -> u16 {
+		self.inner.port
+	}
+
+	pub fn byte_order(&self) -> ByteOrder {
+		self.inner.byte_order
+	}
+
+	pub fn resource(&self) -> &CStr {
+		self.inner.resource
+	}
+}
+
+impl<'a> StartReplyInner<'a> {
+	fn fmt(&self, f: &mut fmt::Formatter, struct_name: &str) -> fmt::Result {
+		f.debug_struct(struct_name)
+			.field("status", &self.status)
+			.field("port", &self.port)
+			.field("byte_order", &self.byte_order)
+			.field("resource", &self.resource)
+			.finish()
+	}
+
+	#[cfg(any(doc, feature = "alloc"))]
+	fn as_ref(&self) -> &'a StartReply {
+		unsafe {
+			let ptr: *const StartReplyInner = self;
+			&*(ptr.cast())
+		}
+	}
+}
+
+impl io::Encode for StartReply {
+	fn encode<W: io::Write>(
+		&self,
+		w: &mut io::Writer<W>,
+	) -> Result<(), io::EncodeError<W::Error>> {
+		self.status().encode(w)?;
+		Word::new(u32::from(self.port())).encode(w)?;
+		self.byte_order().encode(w)?;
+		self.resource().encode(w)
+	}
+}
+
+// }}}
+
+// StartReplyBuf {{{
+
+#[cfg(any(doc, feature = "alloc"))]
+pub struct StartReplyBuf {
+	inner: StartReplyInner<'static>,
+	resource: Cow<'static, CStr>,
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl StartReplyBuf {
+	pub fn new() -> StartReplyBuf {
+		StartReplyBuf {
+			inner: StartReplyInner {
+				status: crate::Status::GOOD,
+				port: 0,
+				byte_order: ByteOrder::LITTLE_ENDIAN,
+				resource: util::CSTR_EMPTY,
+			},
+			resource: Cow::Borrowed(util::CSTR_EMPTY),
+		}
+	}
+
+	pub fn set_status(&mut self, status: crate::Status) {
+		self.inner.status = status;
+	}
+
+	pub fn set_port(&mut self, port: u16) {
+		self.inner.port = port;
+	}
+
+	pub fn set_byte_order(&mut self, byte_order: ByteOrder) {
+		self.inner.byte_order = byte_order;
+	}
+
+	pub fn set_resource(&mut self, resource: impl Into<CString>) {
+		let resource = resource.into();
+		self.inner.resource = unsafe { util::cstr_to_static(&resource) };
+		self.resource = Cow::Owned(resource);
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl AsRef<StartReply> for StartReplyBuf {
+	fn as_ref(&self) -> &StartReply {
+		self.inner.as_ref()
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl Clone for StartReplyBuf {
+	fn clone(&self) -> Self {
+		StartReplyBuf::from(self.as_ref())
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl fmt::Debug for StartReplyBuf {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		self.inner.fmt(f, "StartReplyBuf")
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl core::ops::Deref for StartReplyBuf {
+	type Target = StartReply;
+	fn deref(&self) -> &StartReply {
+		self.inner.as_ref()
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl Eq for StartReplyBuf {}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl PartialEq for StartReplyBuf {
+	fn eq(&self, other: &StartReplyBuf) -> bool {
+		self.inner == other.inner
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl PartialEq<StartReply> for StartReplyBuf {
+	fn eq(&self, other: &StartReply) -> bool {
+		self.inner == other.inner
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl PartialEq<StartReplyBuf> for StartReply {
+	fn eq(&self, other: &StartReplyBuf) -> bool {
+		self.inner == other.inner
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl From<&StartReply> for StartReplyBuf {
+	fn from(reply: &StartReply) -> Self {
+		let mut buf = StartReplyBuf::new();
+		buf.set_status(reply.status());
+		buf.set_port(reply.port());
+		buf.set_byte_order(reply.byte_order());
+		if !reply.resource().is_empty() {
+			buf.set_resource(reply.resource());
+		}
+		buf
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl io::Encode for StartReplyBuf {
+	fn encode<W: io::Write>(
+		&self,
+		w: &mut io::Writer<W>,
+	) -> Result<(), io::EncodeError<W::Error>> {
+		self.as_ref().encode(w)
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl io::Decode for StartReplyBuf {
+	fn decode<R: io::Read>(
+		r: &mut io::Reader<R>,
+	) -> Result<Self, io::DecodeError<R::Error>> {
+		let status = crate::Status::decode(r)?;
+		let port = Word::decode(r)?.as_u32();
+		let byte_order = ByteOrder::decode(r)?;
+		let resource = CString::decode(r)?;
+
+		// FIXME: error if port > u16::MAX
+
+		let mut buf = StartReplyBuf::new();
+		buf.set_status(status);
+		buf.set_port(port as u16);
+		buf.set_byte_order(byte_order);
+		if !resource.is_empty() {
+			buf.set_resource(resource);
+		}
+		Ok(buf)
 	}
 }
 
