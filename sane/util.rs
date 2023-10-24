@@ -45,6 +45,30 @@ pub(crate) unsafe fn cstr_to_static(cstr: &CStr) -> &'static CStr {
 	core::mem::transmute(cstr)
 }
 
+fn iter_eq<X, Y>(
+	x_iter: impl IntoIterator<Item = X>,
+	y_iter: impl IntoIterator<Item = Y>,
+) -> bool
+where
+	X: PartialEq<Y>,
+{
+	let mut x = x_iter.into_iter();
+	let mut y = y_iter.into_iter();
+	loop {
+		let x_next = x.next();
+		let y_next = y.next();
+		match (x_next, y_next) {
+			(None, None) => return true,
+			(Some(x), Some(y)) => {
+				if x != y {
+					return false;
+				}
+			},
+			_ => return false,
+		}
+	}
+}
+
 // Device {{{
 
 #[derive(Eq, PartialEq)]
@@ -449,18 +473,7 @@ impl Eq for DevicesBuf {}
 #[cfg(any(doc, feature = "alloc"))]
 impl PartialEq for DevicesBuf {
 	fn eq(&self, other: &DevicesBuf) -> bool {
-		let mut x = self.iter();
-		let mut y = other.iter();
-		loop {
-			let x_next = x.next();
-			let y_next = y.next();
-			if x_next != y_next {
-				return false;
-			}
-			if x_next == None {
-				return true;
-			}
-		}
+		iter_eq(self, other)
 	}
 }
 
@@ -1503,18 +1516,7 @@ pub struct WordList<'a> {
 
 impl PartialEq for WordList<'_> {
 	fn eq(&self, other: &WordList) -> bool {
-		let mut x = self.iter();
-		let mut y = other.iter();
-		loop {
-			let x_next = x.next();
-			let y_next = y.next();
-			if x_next != y_next {
-				return false;
-			}
-			if x_next == None {
-				return true;
-			}
-		}
+		iter_eq(self, other)
 	}
 }
 
@@ -1597,18 +1599,7 @@ pub struct StringList<'a> {
 
 impl PartialEq for StringList<'_> {
 	fn eq(&self, other: &StringList) -> bool {
-		let mut x = self.iter();
-		let mut y = other.iter();
-		loop {
-			let x_next = x.next();
-			let y_next = y.next();
-			if x_next != y_next {
-				return false;
-			}
-			if x_next == None {
-				return true;
-			}
-		}
+		iter_eq(self, other)
 	}
 }
 
