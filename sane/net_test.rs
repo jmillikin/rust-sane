@@ -25,6 +25,7 @@ use sane::{
 	Word,
 };
 use sane::net::{
+	self,
 	ByteOrder,
 	ProcedureNumber,
 };
@@ -687,4 +688,60 @@ fn util_option_descriptor_group() {
 
 	let decoded_buf: util::OptionDescriptorBuf = decode_ok!(bytes);
 	assert_eq!(option_buf, decoded_buf);
+}
+
+#[test]
+fn init_request() {
+	let mut request_buf = net::InitRequestBuf::new();
+	request_buf.set_version_code(0x11223344);
+	request_buf.set_username(cstr(b"aaa\x00"));
+	let request = request_buf.as_ref();
+
+	assert_eq!(
+		format!("{:#?}", request),
+		concat!(
+			"InitRequest {\n",
+			"    version_code: 287454020,\n",
+			"    username: \"aaa\",\n",
+			"}",
+		),
+	);
+
+	let bytes = encode_ok!(&request);
+	assert_eq!(bytes, concat_bytes_!(
+		[0, 0, 0, 0],             // SANE_NET_INIT
+		[0x11, 0x22, 0x33, 0x44], // version_code
+		[0, 0, 0, 4],             // username.len
+		b"aaa\x00",
+	));
+
+	let decoded: net::InitRequestBuf = decode_ok!(bytes);
+	assert_eq!(request_buf, decoded);
+}
+
+#[test]
+fn init_reply() {
+	let mut reply_buf = net::InitReplyBuf::new();
+	reply_buf.set_status(sane::Status::ACCESS_DENIED);
+	reply_buf.set_version_code(0x11223344);
+	let reply = reply_buf.as_ref();
+
+	assert_eq!(
+		format!("{:#?}", reply),
+		concat!(
+			"InitReply {\n",
+			"    status: SANE_STATUS_ACCESS_DENIED,\n",
+			"    version_code: 287454020,\n",
+			"}",
+		),
+	);
+
+	let bytes = encode_ok!(&reply);
+	assert_eq!(bytes, concat_bytes_!(
+		[0, 0, 0, 11],            // ACCESS_DENIED
+		[0x11, 0x22, 0x33, 0x44], // version_code
+	));
+
+	let decoded: net::InitReplyBuf = decode_ok!(bytes);
+	assert_eq!(reply_buf, decoded);
 }

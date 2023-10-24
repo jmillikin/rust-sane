@@ -34,14 +34,14 @@ const fn cstr(bytes: &[u8]) -> &CStr {
 	unsafe { CStr::from_bytes_with_nul_unchecked(bytes) }
 }
 
-const CSTR_EMPTY: &CStr = cstr(b"\x00");
+pub(crate) const CSTR_EMPTY: &CStr = cstr(b"\x00");
 
 unsafe fn ref_array_next<T>(t: &T) -> &T {
 	&*((t as *const T).add(1))
 }
 
 #[cfg(any(doc, feature = "alloc"))]
-unsafe fn cstr_to_static(cstr: &CStr) -> &'static CStr {
+pub(crate) unsafe fn cstr_to_static(cstr: &CStr) -> &'static CStr {
 	core::mem::transmute(cstr)
 }
 
