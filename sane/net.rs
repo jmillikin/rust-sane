@@ -262,7 +262,7 @@ impl io::Decode for util::DeviceBuf {
 	}
 }
 
-impl io::Encode for util::OptionDescriptor<'_> {
+impl io::Encode for util::OptionDescriptor {
 	fn encode<W: io::Write>(
 		&self,
 		w: &mut io::Writer<W>,
@@ -320,13 +320,22 @@ impl io::Encode for util::OptionDescriptor<'_> {
 	}
 }
 
+impl io::Encode for util::OptionDescriptorRef<'_> {
+	fn encode<W: io::Write>(
+		&self,
+		w: &mut io::Writer<W>,
+	) -> Result<(), io::EncodeError<W::Error>> {
+		self.as_ref().encode(w)
+	}
+}
+
 #[cfg(any(doc, feature = "alloc"))]
 impl io::Encode for util::OptionDescriptorBuf {
 	fn encode<W: io::Write>(
 		&self,
 		w: &mut io::Writer<W>,
 	) -> Result<(), io::EncodeError<W::Error>> {
-		self.option_descriptor().encode(w)
+		self.as_ref().encode(w)
 	}
 }
 

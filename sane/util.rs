@@ -478,8 +478,13 @@ impl<'a> IntoIterator for &'a DevicesBuf {
 
 // OptionDescriptor {{{
 
-#[derive(Copy, Clone, Eq, PartialEq)]
-pub struct OptionDescriptor<'a> {
+#[derive(Eq, PartialEq)]
+pub struct OptionDescriptor {
+	inner: OptionDescriptorInner<'static>,
+}
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+struct OptionDescriptorInner<'a> {
 	name: &'a CStr,
 	title: &'a CStr,
 	description: &'a CStr,
@@ -490,9 +495,49 @@ pub struct OptionDescriptor<'a> {
 	constraint: Constraint<'a>,
 }
 
-impl fmt::Debug for OptionDescriptor<'_> {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		f.debug_struct("OptionDescriptor")
+impl fmt::Debug for OptionDescriptor {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		self.inner.fmt(f, "OptionDescriptor")
+	}
+}
+
+impl OptionDescriptor {
+	pub fn name(&self) -> &CStr {
+		self.inner.name
+	}
+
+	pub fn title(&self) -> &CStr {
+		self.inner.title
+	}
+
+	pub fn description(&self) -> &CStr {
+		self.inner.description
+	}
+
+	pub fn value_type(&self) -> crate::ValueType {
+		self.inner.value_type
+	}
+
+	pub fn unit(&self) -> crate::Unit {
+		self.inner.unit
+	}
+
+	pub fn size(&self) -> usize {
+		self.inner.size as usize
+	}
+
+	pub fn capabilities(&self) -> Capabilities {
+		self.inner.capabilities
+	}
+
+	pub fn constraint(&self) -> Constraint {
+		self.inner.constraint
+	}
+}
+
+impl<'a> OptionDescriptorInner<'a> {
+	fn fmt(&self, f: &mut fmt::Formatter, struct_name: &str) -> fmt::Result {
+		f.debug_struct(struct_name)
 			.field("name", &self.name)
 			.field("title", &self.title)
 			.field("description", &self.description)
@@ -503,14 +548,30 @@ impl fmt::Debug for OptionDescriptor<'_> {
 			.field("constraint", &self.constraint)
 			.finish()
 	}
+
+	fn as_ref(&self) -> &'a OptionDescriptor {
+		unsafe {
+			let ptr: *const OptionDescriptorInner = self;
+			&*(ptr.cast())
+		}
+	}
 }
 
-impl<'a> OptionDescriptor<'a> {
+// }}}
+
+// OptionDescriptorRef {{{
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+pub struct OptionDescriptorRef<'a> {
+	inner: OptionDescriptorInner<'a>,
+}
+
+impl<'a> OptionDescriptorRef<'a> {
 	pub unsafe fn from_ptr(
 		ptr: *const crate::OptionDescriptor,
-	) -> OptionDescriptor<'a> {
+	) -> OptionDescriptorRef<'a> {
 		let raw = &*ptr;
-		OptionDescriptor {
+		let inner = OptionDescriptorInner {
 			name: raw.name.to_c_str().unwrap_or(CSTR_EMPTY),
 			title: raw.title.to_c_str().unwrap_or(CSTR_EMPTY),
 			description: raw.desc.to_c_str().unwrap_or(CSTR_EMPTY),
@@ -525,50 +586,49 @@ impl<'a> OptionDescriptor<'a> {
 				raw.constraint_type,
 				raw.constraint,
 			).unwrap_or(Constraint::None),
-		}
+		};
+		OptionDescriptorRef { inner }
 	}
 }
 
-impl OptionDescriptor<'_> {
-	pub fn name(&self) -> &CStr {
-		self.name
-	}
-
-	pub fn title(&self) -> &CStr {
-		self.title
-	}
-
-	pub fn description(&self) -> &CStr {
-		self.description
-	}
-
-	pub fn value_type(&self) -> crate::ValueType {
-		self.value_type
-	}
-
-	pub fn unit(&self) -> crate::Unit {
-		self.unit
-	}
-
-	pub fn size(&self) -> usize {
-		self.size as usize
-	}
-
-	pub fn capabilities(&self) -> Capabilities {
-		self.capabilities
-	}
-
-	pub fn constraint(&self) -> Constraint {
-		self.constraint
+impl<'a> AsRef<OptionDescriptor> for OptionDescriptorRef<'a> {
+	fn as_ref(&self) -> &OptionDescriptor {
+		self.inner.as_ref()
 	}
 }
 
-//}}}
+impl fmt::Debug for OptionDescriptorRef<'_> {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		self.inner.fmt(f, "OptionDescriptorRef")
+	}
+}
+
+impl<'a> core::ops::Deref for OptionDescriptorRef<'a> {
+	type Target = OptionDescriptor;
+	fn deref(&self) -> &OptionDescriptor {
+		self.inner.as_ref()
+	}
+}
+
+impl PartialEq<OptionDescriptor> for OptionDescriptorRef<'_> {
+	fn eq(&self, other: &OptionDescriptor) -> bool {
+		self.inner == other.inner
+	}
+}
+
+impl PartialEq<OptionDescriptorRef<'_>> for OptionDescriptor {
+	fn eq(&self, other: &OptionDescriptorRef) -> bool {
+		self.inner == other.inner
+	}
+}
+
+// }}}
 
 // OptionDescriptorBuf {{{
 
 #[cfg(any(doc, feature = "alloc"))]
 pub struct OptionDescriptorBuf {
+	inner: OptionDescriptorInner<'static>,
 	raw: Box<crate::OptionDescriptor>,
 	strings: Vec<CString>,
 	constraint_range: Option<Box<crate::Range>>,
@@ -585,25 +645,41 @@ impl OptionDescriptorBuf {
 	) -> OptionDescriptorBuf {
 		let mut strings = Vec::new();
 
-		let cstr_empty_ptr = crate::StringConst::from_c_str(CSTR_EMPTY);
-		let mut take_cstr = |cstring: Option<CString>| -> crate::StringConst {
+		let mut take_cstr = |cstring: Option<CString>| -> &'static CStr {
 			match cstring {
-				None => cstr_empty_ptr,
-				Some(cstring) if cstring.is_empty() => cstr_empty_ptr,
+				None => CSTR_EMPTY,
+				Some(cstring) if cstring.is_empty() => CSTR_EMPTY,
 				Some(cstring) => {
-					let ptr = crate::StringConst::from_c_str(&cstring);
+					let cstr = unsafe { cstr_to_static(cstring.as_ref()) };
 					strings.push(cstring);
-					ptr
+					cstr
 				},
 			}
 		};
 
 		let mut raw = Box::new(crate::OptionDescriptor::new());
-		raw.name = take_cstr(name);
-		raw.title = take_cstr(title);
-		raw.desc = take_cstr(desc);
+
+		let name_cstr = take_cstr(name);
+		let title_cstr = take_cstr(title);
+		let desc_cstr = take_cstr(desc);
+
+		raw.name = crate::StringConst::from_c_str(name_cstr);
+		raw.title = crate::StringConst::from_c_str(title_cstr);
+		raw.desc = crate::StringConst::from_c_str(desc_cstr);
+
+		let inner = OptionDescriptorInner {
+			name: name_cstr,
+			title: title_cstr,
+			description: desc_cstr,
+			value_type: raw.r#type,
+			unit: raw.unit,
+			size: raw.size.as_word().as_u32(),
+			capabilities: Capabilities::from_word(raw.cap.as_word()),
+			constraint: Constraint::None,
+		};
 
 		OptionDescriptorBuf {
+			inner,
 			raw,
 			strings,
 			constraint_range: None,
@@ -612,12 +688,98 @@ impl OptionDescriptorBuf {
 		}
 	}
 
-	pub fn option_descriptor<'a>(&'a self) -> OptionDescriptor<'a> {
-		unsafe { OptionDescriptor::from_ptr(self.as_ptr()) }
+	fn set_unit(&mut self, unit: crate::Unit) {
+		self.raw.unit = unit;
+		self.inner.unit = unit;
+	}
+
+	fn set_value_type(&mut self, value_type: crate::ValueType) {
+		self.raw.r#type = value_type;
+		self.inner.value_type = value_type;
+	}
+
+	fn set_size(&mut self, size: usize) {
+		self.raw.size = crate::Int::new(size as i32);
+		self.inner.size = size as u32;
+	}
+
+	fn set_capabilities(&mut self, capabilities: Capabilities) {
+		self.raw.cap = crate::Int::from_word(capabilities.as_word());
+		self.inner.capabilities = capabilities;
+	}
+
+	fn update_constraint(&mut self) {
+		self.inner.constraint = unsafe {
+			Constraint::from_ptr(
+				self.raw.r#type,
+				self.raw.constraint_type,
+				self.raw.constraint,
+			).unwrap_or(Constraint::None)
+		};
 	}
 
 	pub fn as_ptr(&self) -> *const crate::OptionDescriptor {
 		Box::as_ref(&self.raw)
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl AsRef<OptionDescriptor> for OptionDescriptorBuf {
+	fn as_ref(&self) -> &OptionDescriptor {
+		self.inner.as_ref()
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl fmt::Debug for OptionDescriptorBuf {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		self.inner.fmt(f, "OptionDescriptorBuf")
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl core::ops::Deref for OptionDescriptorBuf {
+	type Target = OptionDescriptor;
+	fn deref(&self) -> &OptionDescriptor {
+		self.inner.as_ref()
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl Eq for OptionDescriptorBuf {}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl PartialEq for OptionDescriptorBuf {
+	fn eq(&self, other: &OptionDescriptorBuf) -> bool {
+		self.inner == other.inner
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl PartialEq<OptionDescriptor> for OptionDescriptorBuf {
+	fn eq(&self, other: &OptionDescriptor) -> bool {
+		self.inner == other.inner
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl PartialEq<OptionDescriptorBuf> for OptionDescriptor {
+	fn eq(&self, other: &OptionDescriptorBuf) -> bool {
+		self.inner == other.inner
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl PartialEq<OptionDescriptorRef<'_>> for OptionDescriptorBuf {
+	fn eq(&self, other: &OptionDescriptorRef) -> bool {
+		self.inner == other.inner
+	}
+}
+
+#[cfg(any(doc, feature = "alloc"))]
+impl PartialEq<OptionDescriptorBuf> for OptionDescriptorRef<'_> {
+	fn eq(&self, other: &OptionDescriptorBuf) -> bool {
+		self.inner == other.inner
 	}
 }
 
@@ -668,9 +830,9 @@ impl BoolOptionBuilder {
 			self.title,
 			self.description,
 		);
-		buf.raw.r#type = crate::ValueType::BOOL;
-		buf.raw.size = crate::Int::new(size_of::<crate::Bool>() as i32);
-		buf.raw.cap = self.capabilities.as_int();
+		buf.set_value_type(crate::ValueType::BOOL);
+		buf.set_size(size_of::<crate::Bool>());
+		buf.set_capabilities(self.capabilities);
 		buf
 	}
 }
@@ -773,10 +935,10 @@ impl IntOptionBuilder {
 			self.title,
 			self.description,
 		);
-		buf.raw.r#type = crate::ValueType::INT;
-		buf.raw.size = crate::Int::new(self.size);
-		buf.raw.unit = self.unit;
-		buf.raw.cap = self.capabilities.as_int();
+		buf.set_value_type(crate::ValueType::INT);
+		buf.set_size(self.size as usize);
+		buf.set_unit(self.unit);
+		buf.set_capabilities(self.capabilities);
 
 		if let Some(range) = self.range {
 			let range_box = Box::new(range);
@@ -784,10 +946,12 @@ impl IntOptionBuilder {
 			buf.constraint_range = Some(range_box);
 			buf.raw.constraint_type = crate::ConstraintType::RANGE;
 			buf.raw.constraint = range_ptr.cast();
+			buf.update_constraint();
 		} else if let Some(word_list) = self.word_list {
 			buf.constraint_word_list = word_list;
 			buf.raw.constraint_type = crate::ConstraintType::WORD_LIST;
 			buf.raw.constraint = buf.constraint_word_list.as_ptr().cast();
+			buf.update_constraint();
 		}
 
 		buf
@@ -897,10 +1061,10 @@ impl FixedOptionBuilder {
 			self.title,
 			self.description,
 		);
-		buf.raw.r#type = crate::ValueType::FIXED;
-		buf.raw.size = crate::Int::new(self.size);
-		buf.raw.unit = self.unit;
-		buf.raw.cap = self.capabilities.as_int();
+		buf.set_value_type(crate::ValueType::FIXED);
+		buf.set_size(self.size as usize);
+		buf.set_unit(self.unit);
+		buf.set_capabilities(self.capabilities);
 
 		if let Some(range) = self.range {
 			let range_box = Box::new(range);
@@ -908,10 +1072,12 @@ impl FixedOptionBuilder {
 			buf.constraint_range = Some(range_box);
 			buf.raw.constraint_type = crate::ConstraintType::RANGE;
 			buf.raw.constraint = range_ptr.cast();
+			buf.update_constraint();
 		} else if let Some(word_list) = self.word_list {
 			buf.constraint_word_list = word_list;
 			buf.raw.constraint_type = crate::ConstraintType::WORD_LIST;
 			buf.raw.constraint = buf.constraint_word_list.as_ptr().cast();
+			buf.update_constraint();
 		}
 
 		buf
@@ -982,10 +1148,10 @@ impl StringOptionBuilder {
 			self.title,
 			self.description,
 		);
-		buf.raw.r#type = crate::ValueType::STRING;
-		buf.raw.size = crate::Int::new(self.size);
-		buf.raw.unit = self.unit;
-		buf.raw.cap = self.capabilities.as_int();
+		buf.set_value_type(crate::ValueType::STRING);
+		buf.set_size(self.size as usize);
+		buf.set_unit(self.unit);
+		buf.set_capabilities(self.capabilities);
 
 		if let Some(mut values) = self.values {
 			let string_list = &mut buf.constraint_string_list;
@@ -996,6 +1162,8 @@ impl StringOptionBuilder {
 			buf.strings.append(&mut values);
 			buf.raw.constraint_type = crate::ConstraintType::STRING_LIST;
 			buf.raw.constraint = string_list.as_ptr().cast();
+
+			buf.update_constraint();
 		}
 
 		buf
@@ -1049,9 +1217,9 @@ impl ButtonOptionBuilder {
 			self.title,
 			self.description,
 		);
-		buf.raw.r#type = crate::ValueType::BUTTON;
-		buf.raw.size = crate::Int::new(0);
-		buf.raw.cap = self.capabilities.as_int();
+		buf.set_value_type(crate::ValueType::BUTTON);
+		buf.set_size(0);
+		buf.set_capabilities(self.capabilities);
 		buf
 	}
 }
@@ -1094,8 +1262,8 @@ impl GroupOptionBuilder {
 			self.title,
 			self.description,
 		);
-		buf.raw.r#type = crate::ValueType::GROUP;
-		buf.raw.size = crate::Int::new(0);
+		buf.set_value_type(crate::ValueType::GROUP);
+		buf.set_size(0);
 		buf
 	}
 }
@@ -1141,11 +1309,6 @@ impl Capabilities {
 
 	pub const fn from_word(word: crate::Word) -> Capabilities {
 		Capabilities { bits: word.as_u32() }
-	}
-
-	#[allow(dead_code)]
-	fn as_int(self) -> crate::Int {
-		crate::Int::new(self.bits as i32)
 	}
 
 	pub fn can_soft_select(self) -> bool {

@@ -373,10 +373,7 @@ fn util_option_descriptor_bool() {
 	));
 
 	let decoded_buf: util::OptionDescriptorBuf = decode_ok!(bytes);
-	assert_eq!(
-		option_buf.option_descriptor(),
-		decoded_buf.option_descriptor(),
-	);
+	assert_eq!(option_buf, decoded_buf);
 }
 
 #[test]
@@ -405,10 +402,7 @@ fn util_option_descriptor_int() {
 	));
 
 	let decoded_buf: util::OptionDescriptorBuf = decode_ok!(bytes);
-	assert_eq!(
-		option_buf.option_descriptor(),
-		decoded_buf.option_descriptor(),
-	);
+	assert_eq!(option_buf, decoded_buf);
 }
 
 #[test]
@@ -438,10 +432,7 @@ fn util_option_descriptor_int_range() {
 	));
 
 	let decoded_buf: util::OptionDescriptorBuf = decode_ok!(bytes);
-	assert_eq!(
-		option_buf.option_descriptor(),
-		decoded_buf.option_descriptor(),
-	);
+	assert_eq!(option_buf, decoded_buf);
 }
 
 #[test]
@@ -477,10 +468,7 @@ fn util_option_descriptor_int_enum() {
 	));
 
 	let decoded_buf: util::OptionDescriptorBuf = decode_ok!(bytes);
-	assert_eq!(
-		option_buf.option_descriptor(),
-		decoded_buf.option_descriptor(),
-	);
+	assert_eq!(option_buf, decoded_buf);
 }
 
 #[test]
@@ -509,10 +497,7 @@ fn util_option_descriptor_fixed() {
 	));
 
 	let decoded_buf: util::OptionDescriptorBuf = decode_ok!(bytes);
-	assert_eq!(
-		option_buf.option_descriptor(),
-		decoded_buf.option_descriptor(),
-	);
+	assert_eq!(option_buf, decoded_buf);
 }
 
 #[test]
@@ -545,10 +530,7 @@ fn util_option_descriptor_fixed_range() {
 	));
 
 	let decoded_buf: util::OptionDescriptorBuf = decode_ok!(bytes);
-	assert_eq!(
-		option_buf.option_descriptor(),
-		decoded_buf.option_descriptor(),
-	);
+	assert_eq!(option_buf, decoded_buf);
 }
 
 #[test]
@@ -584,10 +566,7 @@ fn util_option_descriptor_fixed_enum() {
 	));
 
 	let decoded_buf: util::OptionDescriptorBuf = decode_ok!(bytes);
-	assert_eq!(
-		option_buf.option_descriptor(),
-		decoded_buf.option_descriptor(),
-	);
+	assert_eq!(option_buf, decoded_buf);
 }
 
 #[test]
@@ -616,10 +595,7 @@ fn util_option_descriptor_string() {
 	));
 
 	let decoded_buf: util::OptionDescriptorBuf = decode_ok!(bytes);
-	assert_eq!(
-		option_buf.option_descriptor(),
-		decoded_buf.option_descriptor(),
-	);
+	assert_eq!(option_buf, decoded_buf);
 }
 
 #[test]
@@ -657,10 +633,7 @@ fn util_option_descriptor_string_enum() {
 	));
 
 	let decoded_buf: util::OptionDescriptorBuf = decode_ok!(bytes);
-	assert_eq!(
-		option_buf.option_descriptor(),
-		decoded_buf.option_descriptor(),
-	);
+	assert_eq!(option_buf, decoded_buf);
 }
 
 #[test]
@@ -687,10 +660,7 @@ fn util_option_descriptor_button() {
 	));
 
 	let decoded_buf: util::OptionDescriptorBuf = decode_ok!(bytes);
-	assert_eq!(
-		option_buf.option_descriptor(),
-		decoded_buf.option_descriptor(),
-	);
+	assert_eq!(option_buf, decoded_buf);
 }
 
 #[test]
@@ -716,8 +686,5 @@ fn util_option_descriptor_group() {
 	));
 
 	let decoded_buf: util::OptionDescriptorBuf = decode_ok!(bytes);
-	assert_eq!(
-		option_buf.option_descriptor(),
-		decoded_buf.option_descriptor(),
-	);
+	assert_eq!(option_buf, decoded_buf);
 }

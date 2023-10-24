@@ -186,7 +186,8 @@ fn util_option_descriptor() {
 	raw.unit = sane::Unit::PIXEL;
 	raw.size = sane::Int::new(size_of::<sane::Int>() as i32);
 
-	let option = unsafe { util::OptionDescriptor::from_ptr(&raw) };
+	let option_ref = unsafe { util::OptionDescriptorRef::from_ptr(&raw) };
+	let option = option_ref.as_ref();
 
 	assert_eq!(option.name(), CSTR_OPT_NAME);
 	assert_eq!(option.title(), CSTR_OPT_TITLE);
@@ -226,7 +227,7 @@ fn bool_option_builder() {
 		})
 		.build();
 
-	let option = buf.option_descriptor();
+	let option = buf.as_ref();
 
 	assert_eq!(option.name(), CSTR_OPT_NAME);
 	assert_eq!(option.title(), CSTR_OPT_TITLE);
@@ -266,7 +267,7 @@ fn int_option_builder() {
 		})
 		.build();
 
-	let option = buf.option_descriptor();
+	let option = buf.as_ref();
 
 	assert_eq!(option.name(), CSTR_OPT_NAME);
 	assert_eq!(option.title(), CSTR_OPT_TITLE);
@@ -300,7 +301,7 @@ fn int_option_builder_count() {
 		.count(123)
 		.build();
 
-	let option = buf.option_descriptor();
+	let option = buf.as_ref();
 
 	assert_eq!(option.size(), 123 * size_of::<sane::Int>());
 }
@@ -311,7 +312,7 @@ fn int_option_builder_range() {
 		.range(0, 100, 1)
 		.build();
 
-	let option = buf.option_descriptor();
+	let option = buf.as_ref();
 
 	assert_eq!(
 		format!("{:#?}", option.constraint()),
@@ -331,7 +332,7 @@ fn int_option_builder_values() {
 		.values(&[1, 2, 3])
 		.build();
 
-	let option = buf.option_descriptor();
+	let option = buf.as_ref();
 
 	assert_eq!(
 		format!("{:#?}", option.constraint()),
@@ -358,7 +359,7 @@ fn fixed_option_builder() {
 		})
 		.build();
 
-	let option = buf.option_descriptor();
+	let option = buf.as_ref();
 
 	assert_eq!(option.name(), CSTR_OPT_NAME);
 	assert_eq!(option.title(), CSTR_OPT_TITLE);
@@ -392,7 +393,7 @@ fn fixed_option_builder_count() {
 		.count(123)
 		.build();
 
-	let option = buf.option_descriptor();
+	let option = buf.as_ref();
 
 	assert_eq!(option.size(), 123 * size_of::<sane::Fixed>());
 }
@@ -407,7 +408,7 @@ fn fixed_option_builder_range() {
 		)
 		.build();
 
-	let option = buf.option_descriptor();
+	let option = buf.as_ref();
 
 	assert_eq!(
 		format!("{:#?}", option.constraint()),
@@ -431,7 +432,7 @@ fn fixed_option_builder_values() {
 		])
 		.build();
 
-	let option = buf.option_descriptor();
+	let option = buf.as_ref();
 
 	assert_eq!(
 		format!("{:#?}", option.constraint()),
@@ -458,7 +459,7 @@ fn string_option_builder() {
 		})
 		.build();
 
-	let option = buf.option_descriptor();
+	let option = buf.as_ref();
 
 	assert_eq!(option.name(), CSTR_OPT_NAME);
 	assert_eq!(option.title(), CSTR_OPT_TITLE);
@@ -496,7 +497,7 @@ fn string_option_builder_values() {
 		])
 		.build();
 
-	let option = buf.option_descriptor();
+	let option = buf.as_ref();
 
 	assert_eq!(
 		format!("{:#?}", option.constraint()),
@@ -522,7 +523,7 @@ fn button_option_builder() {
 		})
 		.build();
 
-	let option = buf.option_descriptor();
+	let option = buf.as_ref();
 
 	assert_eq!(option.name(), CSTR_OPT_NAME);
 	assert_eq!(option.title(), CSTR_OPT_TITLE);
@@ -557,7 +558,7 @@ fn group_option_builder() {
 		.description(CSTR_OPT_DESC)
 		.build();
 
-	let option = buf.option_descriptor();
+	let option = buf.as_ref();
 
 	assert_eq!(option.name(), CSTR_EMPTY);
 	assert_eq!(option.title(), CSTR_OPT_TITLE);
