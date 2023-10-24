@@ -838,3 +838,60 @@ fn get_devices_reply() {
 	let decoded: net::GetDevicesReplyBuf = decode_ok!(bytes);
 	assert_eq!(reply_buf, decoded);
 }
+
+#[test]
+fn open_request() {
+	let mut request_buf = net::OpenRequestBuf::new();
+	request_buf.set_device_name(CSTR_DEV_NAME);
+	let request = request_buf.as_ref();
+
+	assert_eq!(
+		format!("{:#?}", request),
+		concat!(
+			"OpenRequest {\n",
+			"    device_name: \"device-name\",\n",
+			"}",
+		),
+	);
+
+	let bytes = encode_ok!(request);
+	assert_eq!(bytes, concat_bytes_!(
+		[0, 0, 0, 2],       // SANE_NET_OPEN
+		[0, 0, 0, 12],      // device_name.len
+		b"device-name\x00",
+	));
+
+	let decoded: net::OpenRequestBuf = decode_ok!(bytes);
+	assert_eq!(request_buf, decoded);
+}
+
+#[test]
+fn open_reply() {
+	let mut reply_buf = net::OpenReplyBuf::new();
+	reply_buf.set_status(sane::Status::ACCESS_DENIED);
+	reply_buf.set_handle(net::Handle(0x11223344));
+	reply_buf.set_resource(cstr(b"open-resource\x00"));
+	let reply = reply_buf.as_ref();
+
+	assert_eq!(
+		format!("{:#?}", reply),
+		concat!(
+			"OpenReply {\n",
+			"    status: SANE_STATUS_ACCESS_DENIED,\n",
+			"    handle: Handle(287454020),\n",
+			"    resource: \"open-resource\",\n",
+			"}",
+		),
+	);
+
+	let bytes = encode_ok!(&reply);
+	assert_eq!(bytes, concat_bytes_!(
+		[0, 0, 0, 11], // Status::ACCESS_DENIED
+		[0x11, 0x22, 0x33, 0x44], // handle
+		[0, 0, 0, 14],
+		b"open-resource\x00",
+	));
+
+	let decoded: net::OpenReplyBuf = decode_ok!(bytes);
+	assert_eq!(reply_buf, decoded);
+}
