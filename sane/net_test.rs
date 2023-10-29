@@ -1045,6 +1045,323 @@ fn get_option_descriptors_reply() {
 }
 
 #[test]
+fn control_option_request_set_int() {
+	let mut request_buf = net::ControlOptionRequestBuf::new();
+	request_buf.set_handle(net::Handle(0x11223344));
+	request_buf.set_option(0x55555555);
+	request_buf.set_action(sane::Action::SET_VALUE);
+	request_buf.set_value(net::OptionValueBuf::from_i32(0x66778899));
+	let request = request_buf.as_ref();
+
+	assert_eq!(
+		format!("{:#?}", request),
+		concat!(
+			"ControlOptionRequest {\n",
+			"    handle: Handle(287454020),\n",
+			"    option: 1431655765,\n",
+			"    action: SANE_ACTION_SET_VALUE,\n",
+			"    value_type: SANE_TYPE_INT,\n",
+			"    value: [\n",
+			"        102,\n",
+			"        119,\n",
+			"        136,\n",
+			"        153,\n",
+			"    ],\n",
+			"}",
+		),
+	);
+
+	let bytes = encode_ok!(&request);
+	assert_eq!(bytes, concat_bytes_!(
+		[0, 0, 0, 5],             // SANE_NET_CONTROL_OPTION
+		[0x11, 0x22, 0x33, 0x44], // handle
+		[0x55, 0x55, 0x55, 0x55], // option
+		[0, 0, 0, 1],             // SANE_ACTION_SET_VALUE
+		[0, 0, 0, 1],             // value_type: INT
+		[0, 0, 0, 4],             // value size
+		[0, 0, 0, 1],             // value[-1]: word list length
+		[0x66, 0x77, 0x88, 0x99], // value[0]: Int::new(0x66778899)
+	));
+
+	let decoded: net::ControlOptionRequestBuf = decode_ok!(bytes);
+	assert_eq!(request_buf, decoded);
+}
+
+#[test]
+fn control_option_request_set_string() {
+	let mut request_buf = net::ControlOptionRequestBuf::new();
+	request_buf.set_handle(net::Handle(0x11223344));
+	request_buf.set_option(0x55555555);
+	request_buf.set_action(sane::Action::SET_VALUE);
+	request_buf.set_value(net::OptionValueBuf::from_cstring(cstr(b"abcd\x00")));
+	let request = request_buf.as_ref();
+
+	assert_eq!(
+		format!("{:#?}", request),
+		concat!(
+			"ControlOptionRequest {\n",
+			"    handle: Handle(287454020),\n",
+			"    option: 1431655765,\n",
+			"    action: SANE_ACTION_SET_VALUE,\n",
+			"    value_type: SANE_TYPE_STRING,\n",
+			"    value: [\n",
+			"        97,\n",
+			"        98,\n",
+			"        99,\n",
+			"        100,\n",
+			"        0,\n",
+			"    ],\n",
+			"}",
+		),
+	);
+
+	let bytes = encode_ok!(&request);
+	assert_eq!(bytes, concat_bytes_!(
+		[0, 0, 0, 5],             // SANE_NET_CONTROL_OPTION
+		[0x11, 0x22, 0x33, 0x44], // handle
+		[0x55, 0x55, 0x55, 0x55], // option
+		[0, 0, 0, 1],             // SANE_ACTION_SET_VALUE
+		[0, 0, 0, 3],             // value_type: STRING
+		[0, 0, 0, 5],             // value size
+		b"abcd\x00",
+	));
+
+	let decoded: net::ControlOptionRequestBuf = decode_ok!(bytes);
+	assert_eq!(request_buf, decoded);
+}
+
+#[test]
+fn control_option_request_set_auto() {
+	let mut request_buf = net::ControlOptionRequestBuf::new();
+	request_buf.set_handle(net::Handle(0x11223344));
+	request_buf.set_option(0x55555555);
+	request_buf.set_action(sane::Action::SET_AUTO);
+	let request = request_buf.as_ref();
+
+	assert_eq!(
+		format!("{:#?}", request),
+		concat!(
+			"ControlOptionRequest {\n",
+			"    handle: Handle(287454020),\n",
+			"    option: 1431655765,\n",
+			"    action: SANE_ACTION_SET_AUTO,\n",
+			"    value_type: SANE_TYPE_BOOL,\n",
+			"    value: [],\n",
+			"}",
+		),
+	);
+
+	let bytes = encode_ok!(&request);
+	assert_eq!(bytes, concat_bytes_!(
+		[0, 0, 0, 5],             // SANE_NET_CONTROL_OPTION
+		[0x11, 0x22, 0x33, 0x44], // handle
+		[0x55, 0x55, 0x55, 0x55], // option
+		[0, 0, 0, 2],             // SANE_ACTION_SET_AUTO
+	));
+
+	let decoded: net::ControlOptionRequestBuf = decode_ok!(bytes);
+	assert_eq!(request_buf, decoded);
+}
+
+#[test]
+fn control_option_reply() {
+	let mut reply_buf = net::ControlOptionReplyBuf::new();
+	reply_buf.set_status(sane::Status::ACCESS_DENIED);
+	reply_buf.set_info(0x55555555);
+	reply_buf.set_value(net::OptionValueBuf::from_i32(0x66778899));
+	reply_buf.set_resource(cstr(b"set-value-resource\x00"));
+	let reply = reply_buf.as_ref();
+
+	assert_eq!(
+		format!("{:#?}", reply),
+		concat!(
+			"ControlOptionReply {\n",
+			"    status: SANE_STATUS_ACCESS_DENIED,\n",
+			"    info: 1431655765,\n",
+			"    value_type: SANE_TYPE_INT,\n",
+			"    value: [\n",
+			"        102,\n",
+			"        119,\n",
+			"        136,\n",
+			"        153,\n",
+			"    ],\n",
+			"    resource: \"set-value-resource\",\n",
+			"}",
+		),
+	);
+
+	let bytes = encode_ok!(&reply);
+	assert_eq!(bytes, concat_bytes_!(
+		[0, 0, 0, 11],             // ACCESS_DENIED
+		[0x55, 0x55, 0x55, 0x55],  // info
+
+		[0, 0, 0, 1],             // value_type: INT
+		[0, 0, 0, 4],             // value size
+		[0, 0, 0, 1],             // value[-1]: word list length
+		[0x66, 0x77, 0x88, 0x99], // value[0]: Int::new(0x66778899)
+
+		[0, 0, 0, 19],
+		b"set-value-resource\x00"
+	));
+
+	let decoded: net::ControlOptionReplyBuf = decode_ok!(bytes);
+	assert_eq!(reply_buf, decoded);
+}
+
+fn encode_option_value(value: &net::OptionValueBuf) -> Vec<u8> {
+	let mut request_buf = net::ControlOptionRequestBuf::new();
+	request_buf.set_value(value.clone());
+
+	let request_bytes = encode_ok!(&request_buf);
+	Vec::from(&request_bytes[16..])
+}
+
+fn decode_option_value(mut value_bytes: Vec<u8>) -> net::OptionValueBuf {
+	let mut request_bytes = vec![0u8; 16];
+	request_bytes.append(&mut value_bytes);
+
+	let request_buf: net::ControlOptionRequestBuf = decode_ok!(request_bytes);
+	request_buf.value().into()
+}
+
+#[test]
+fn option_value_bool() {
+	let value = net::OptionValueBuf::from_bool(true);
+	assert_eq!(value.as_bytes(), &[0, 0, 0, 1]);
+
+	let bytes = encode_option_value(&value);
+	assert_eq!(bytes, concat_bytes_!(
+		[0, 0, 0, 0], // BOOL
+		[0, 0, 0, 4], // value_size
+		[0, 0, 0, 1], // values[-1]: word list length
+		[0, 0, 0, 1], // values[0]: TRUE
+	));
+
+	let decoded = decode_option_value(bytes);
+	assert_eq!(value, decoded);
+}
+
+#[test]
+fn option_value_int() {
+	let value = net::OptionValueBuf::from_i32(0x11223344);
+	assert_eq!(value.as_bytes(), &[0x11, 0x22, 0x33, 0x44]);
+
+	let bytes = encode_option_value(&value);
+	assert_eq!(bytes, concat_bytes_!(
+		[0, 0, 0, 1], // INT
+		[0, 0, 0, 4], // value_size
+		[0, 0, 0, 1], // values[-1]: word list length
+		[0x11, 0x22, 0x33, 0x44], // values[0]: Int::new(0x11223344)
+	));
+
+	let decoded = decode_option_value(bytes);
+	assert_eq!(value, decoded);
+}
+
+#[test]
+fn option_value_int_list() {
+	let value = net::OptionValueBuf::from_i32_list(&[
+		0x11223344,
+		0x55667788,
+	]);
+	assert_eq!(value.as_bytes(), concat_bytes_!(
+		[0x11, 0x22, 0x33, 0x44],
+		[0x55, 0x66, 0x77, 0x88],
+	));
+
+	let bytes = encode_option_value(&value);
+	assert_eq!(bytes, concat_bytes_!(
+		[0, 0, 0, 1], // INT
+		[0, 0, 0, 8], // value_size
+		[0, 0, 0, 2], // values[-1]: word list length
+		[0x11, 0x22, 0x33, 0x44], // values[0]: Int::new(0x11223344)
+		[0x55, 0x66, 0x77, 0x88], // values[1]: Int::new(0x55667788)
+	));
+
+	let decoded = decode_option_value(bytes);
+	assert_eq!(value, decoded);
+}
+
+#[test]
+fn option_value_fixed() {
+	let value = net::OptionValueBuf::from_fixed(Fixed::new(0x1122, 0x3344));
+	assert_eq!(value.as_bytes(), &[0x11, 0x22, 0x33, 0x44]);
+
+	let bytes = encode_option_value(&value);
+	assert_eq!(bytes, concat_bytes_!(
+		[0, 0, 0, 2], // FIXED
+		[0, 0, 0, 4], // value_size
+		[0, 0, 0, 1], // values[-1]: word list length
+		[0x11, 0x22, 0x33, 0x44], // values[0]: Fixed::new(0x1122, 0x3344)
+	));
+
+	let decoded = decode_option_value(bytes);
+	assert_eq!(value, decoded);
+}
+
+#[test]
+fn option_value_fixed_list() {
+	let value = net::OptionValueBuf::from_fixed_list(&[
+		Fixed::new(0x1122, 0x3344),
+		Fixed::new(0x5566, 0x7788),
+	]);
+	assert_eq!(value.as_bytes(), concat_bytes_!(
+		[0x11, 0x22, 0x33, 0x44],
+		[0x55, 0x66, 0x77, 0x88],
+	));
+
+	let bytes = encode_option_value(&value);
+	assert_eq!(bytes, concat_bytes_!(
+		[0, 0, 0, 2], // FIXED
+		[0, 0, 0, 8], // value_size
+		[0, 0, 0, 2], // values[-1]: word list length
+		[0x11, 0x22, 0x33, 0x44], // values[0]: Fixed::new(0x1122, 0x3344)
+		[0x55, 0x66, 0x77, 0x88], // values[1]: Fixed::new(0x5566, 0x7788)
+	));
+
+	let decoded = decode_option_value(bytes);
+	assert_eq!(value, decoded);
+}
+
+#[test]
+fn option_value_string() {
+	let value = net::OptionValueBuf::from_cstring(cstr(b"abcde\x00"));
+	assert_eq!(value.as_bytes(), b"abcde\x00");
+
+	let bytes = encode_option_value(&value);
+	assert_eq!(bytes, concat_bytes_!(
+		[0, 0, 0, 3], // STRING
+		[0, 0, 0, 6], // value_size
+		b"abcde\x00",
+	));
+
+	let decoded = decode_option_value(bytes);
+	assert_eq!(value, decoded);
+}
+
+#[test]
+#[should_panic]
+fn option_value_string_size_too_short() {
+	net::OptionValueBuf::from_cstring_with_size(cstr(b"abcde\x00"), 5);
+}
+
+#[test]
+fn option_value_string_size_extend() {
+	let value = net::OptionValueBuf::from_cstring_with_size(cstr(b"a\x00"), 6);
+	assert_eq!(value.as_bytes(), b"a\x00\x00\x00\x00\x00");
+
+	let bytes = encode_option_value(&value);
+	assert_eq!(bytes, concat_bytes_!(
+		[0, 0, 0, 3], // STRING
+		[0, 0, 0, 6], // value_size
+		b"a\x00\x00\x00\x00\x00",
+	));
+
+	let decoded = decode_option_value(bytes);
+	assert_eq!(value, decoded);
+}
+
+#[test]
 fn get_parameters_request() {
 	let mut request_buf = net::GetParametersRequestBuf::new();
 	request_buf.set_handle(net::Handle(0x11223344));

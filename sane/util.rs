@@ -45,6 +45,13 @@ pub(crate) unsafe fn cstr_to_static(cstr: &CStr) -> &'static CStr {
 	core::mem::transmute(cstr)
 }
 
+pub(crate) fn split_array_ref<T, const N: usize>(
+	slice: &[T],
+) -> (&[T; N], &[T]) {
+	let (head, tail) = slice.split_at(N);
+	(unsafe { &*(head.as_ptr() as *const [T; N]) }, tail)
+}
+
 fn iter_eq<X, Y>(
 	x_iter: impl IntoIterator<Item = X>,
 	y_iter: impl IntoIterator<Item = Y>,

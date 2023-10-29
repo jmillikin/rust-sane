@@ -139,6 +139,7 @@ pub(crate) enum DecodeErrorKind<IoError> {
 	SizeOverflow(u32),
 	TryReserveError(usize),
 	InvalidString,
+	InvalidOptionType,
 	InvalidBool(Word),
 	InvalidValueType(crate::ValueType),
 	InvalidConstraint(crate::ValueType, crate::ConstraintType),
@@ -174,6 +175,7 @@ pub struct EncodeError<IoError> {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum EncodeErrorKind<IoError> {
 	SizeOverflow(usize),
+	InvalidOptionType,
 	IoError(IoError),
 }
 
@@ -199,6 +201,25 @@ impl<R: Read> Reader<'_, R> {
 		buf: &mut [u8],
 	) -> Result<(), DecodeError<R::Error>> {
 		self.r.read_exact(buf).map_err(|e| DecodeError::io_err(e))
+	}
+
+	#[cfg(any(doc, feature = "alloc"))]
+	pub(crate) fn read_vec(
+		&mut self,
+		len: usize,
+	) -> Result<Vec<u8>, DecodeError<R::Error>> {
+		let mut bytes = Vec::new();
+		if len == 0 {
+			return Ok(bytes);
+		}
+		if let Err(_) = bytes.try_reserve(len) {
+			return Err(DecodeError {
+				kind: DecodeErrorKind::TryReserveError(len),
+			});
+		}
+		bytes.resize(len, 0u8);
+		self.read_bytes(&mut bytes)?;
+		Ok(bytes)
 	}
 
 	#[cfg(any(doc, feature = "alloc"))]
@@ -233,7 +254,10 @@ pub struct Writer<'a, W> {
 }
 
 impl<W: Write> Writer<'_, W> {
-	fn write_bytes(&mut self, buf: &[u8]) -> Result<(), EncodeError<W::Error>> {
+	pub(crate) fn write_bytes(
+		&mut self,
+		buf: &[u8],
+	) -> Result<(), EncodeError<W::Error>> {
 		self.w.write_all(buf).map_err(|e| EncodeError::io_err(e))
 	}
 
@@ -417,21 +441,12 @@ impl Decode for Option<CString> {
 	fn decode<R: Read>(
 		r: &mut Reader<R>,
 	) -> Result<Self, DecodeError<R::Error>> {
-		let len = r.read_size()?;
-		if len == 0 {
+		let bytes_len = r.read_size()?;
+		if bytes_len == 0 {
 			return Ok(None);
 		}
-
-		let mut vec = Vec::new();
-		if let Err(_) = vec.try_reserve(len) {
-			return Err(DecodeError {
-				kind: DecodeErrorKind::TryReserveError(len),
-			});
-		}
-		vec.resize(len, 0u8);
-		r.read_bytes(&mut vec)?;
-
-		if let Some(cstring) = cstring_from_vec_until_nul(vec) {
+		let bytes = r.read_vec(bytes_len)?;
+		if let Some(cstring) = cstring_from_vec_until_nul(bytes) {
 			return Ok(Some(cstring));
 		}
 		Err(DecodeError {
