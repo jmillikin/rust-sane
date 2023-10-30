@@ -15,6 +15,8 @@
 
 #[cfg(any(doc, feature = "alloc"))]
 use alloc::ffi::CString;
+#[cfg(any(doc, feature = "alloc"))]
+use alloc::vec::Vec;
 
 use core::fmt;
 

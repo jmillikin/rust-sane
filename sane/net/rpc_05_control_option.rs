@@ -17,6 +17,8 @@
 use alloc::borrow::Cow;
 #[cfg(any(doc, feature = "alloc"))]
 use alloc::ffi::CString;
+#[cfg(any(doc, feature = "alloc"))]
+use alloc::vec::Vec;
 
 use core::ffi::CStr;
 use core::fmt;
