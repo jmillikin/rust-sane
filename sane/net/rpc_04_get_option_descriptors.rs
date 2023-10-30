@@ -212,11 +212,11 @@ impl io::Encode for GetOptionDescriptorsReply {
 		&self,
 		w: &mut io::Writer<W>,
 	) -> Result<(), io::EncodeError<W::Error>> {
-		Word::new((self.option_descriptors().len() + 1) as u32).encode(w)?;
+		Word::new((self.option_descriptors().len()) as u32).encode(w)?;
 		for opt_desc in self.option_descriptors() {
 			w.write_ptr(Some(*opt_desc))?;
 		}
-		w.write_ptr(Option::<&util::OptionDescriptor>::None)
+		Ok(())
 	}
 }
 

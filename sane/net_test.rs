@@ -1005,7 +1005,7 @@ fn get_option_descriptors_reply() {
 
 	let bytes = encode_ok!(reply);
 	assert_eq!(bytes, concat_bytes_!(
-		[0, 0, 0, 3],  // options_list.len() + 1
+		[0, 0, 0, 2],  // options_list.len()
 
 		[0, 0, 0, 0],  // options_list[0].is_null()
 		[0, 0, 0, 12], // CSTR_OPT_NAME.len()
@@ -1032,8 +1032,6 @@ fn get_option_descriptors_reply() {
 		[0, 0, 0, 0],
 		[0, 0, 0, 0],
 		[0, 0, 0, 0],
-
-		[0, 0, 0, 1],  // (NULL).is_null()
 	));
 
 	let decoded: net::GetOptionDescriptorsReplyBuf = decode_ok!(bytes);
