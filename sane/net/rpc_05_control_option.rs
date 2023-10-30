@@ -271,7 +271,7 @@ struct ControlOptionReplyInner<'a> {
 	info: u32,
 	value_type: ValueType,
 	value: &'a [u8],
-	resource: &'a CStr,
+	resource: Option<&'a CStr>,
 }
 
 impl fmt::Debug for ControlOptionReply {
@@ -300,7 +300,7 @@ impl ControlOptionReply {
 		}
 	}
 
-	pub fn resource(&self) -> &CStr {
+	pub fn resource(&self) -> Option<&CStr> {
 		self.inner.resource
 	}
 }
@@ -344,7 +344,7 @@ impl io::Encode for ControlOptionReply {
 #[cfg(any(doc, feature = "alloc"))]
 pub struct ControlOptionReplyBuf {
 	inner: ControlOptionReplyInner<'static>,
-	resource: Cow<'static, CStr>,
+	resource: Option<CString>,
 	value: Cow<'static, [u8]>,
 }
 
@@ -357,10 +357,10 @@ impl ControlOptionReplyBuf {
 				info: 0,
 				value_type: ValueType::BOOL,
 				value: &[],
-				resource: util::CSTR_EMPTY,
+				resource: None,
 			},
 			value: Cow::Borrowed(&[]),
-			resource: Cow::Borrowed(util::CSTR_EMPTY),
+			resource: None,
 		}
 	}
 
@@ -382,8 +382,8 @@ impl ControlOptionReplyBuf {
 
 	pub fn set_resource(&mut self, resource: impl Into<CString>) {
 		let resource = resource.into();
-		self.inner.resource = unsafe { util::cstr_to_static(&resource) };
-		self.resource = Cow::Owned(resource);
+		self.inner.resource = Some(unsafe { util::cstr_to_static(&resource) });
+		self.resource = Some(resource);
 	}
 }
 
@@ -447,8 +447,8 @@ impl From<&ControlOptionReply> for ControlOptionReplyBuf {
 		buf.set_status(request.status());
 		buf.set_info(request.info());
 		buf.set_value(request.value());
-		if !request.resource().is_empty() {
-			buf.set_resource(request.resource());
+		if let Some(resource) = request.resource() {
+			buf.set_resource(resource);
 		}
 		buf
 	}
@@ -473,8 +473,7 @@ impl io::Decode for ControlOptionReplyBuf {
 		buf.set_status(Status::decode(r)?);
 		buf.set_info(Word::decode(r)?.as_u32());
 		buf.set_value(OptionValueBuf::decode(r)?);
-		let resource = CString::decode(r)?;
-		if !resource.is_empty() {
+		if let Some(resource) = Option::<CString>::decode(r)? {
 			buf.set_resource(resource);
 		}
 		Ok(buf)

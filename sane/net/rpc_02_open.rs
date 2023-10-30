@@ -206,7 +206,7 @@ pub struct OpenReply {
 struct OpenReplyInner<'a> {
 	status: Status,
 	handle: net::Handle,
-	resource: &'a CStr,
+	resource: Option<&'a CStr>,
 }
 
 impl fmt::Debug for OpenReply {
@@ -224,7 +224,7 @@ impl OpenReply {
 		self.inner.handle
 	}
 
-	pub fn resource(&self) -> &CStr {
+	pub fn resource(&self) -> Option<&CStr> {
 		self.inner.resource
 	}
 }
@@ -265,7 +265,7 @@ impl io::Encode for OpenReply {
 #[cfg(any(doc, feature = "alloc"))]
 pub struct OpenReplyBuf {
 	inner: OpenReplyInner<'static>,
-	resource: Cow<'static, CStr>,
+	resource: Option<CString>,
 }
 
 #[cfg(any(doc, feature = "alloc"))]
@@ -275,9 +275,9 @@ impl OpenReplyBuf {
 			inner: OpenReplyInner {
 				status: Status::GOOD,
 				handle: net::Handle(0),
-				resource: util::CSTR_EMPTY,
+				resource: None,
 			},
-			resource: Cow::Borrowed(util::CSTR_EMPTY),
+			resource: None,
 		}
 	}
 
@@ -291,8 +291,10 @@ impl OpenReplyBuf {
 
 	pub fn set_resource(&mut self, resource: impl Into<CString>) {
 		let resource = resource.into();
-		self.inner.resource = unsafe { util::cstr_to_static(&resource) };
-		self.resource = Cow::Owned(resource);
+		self.inner.resource = unsafe {
+			Some(util::cstr_to_static(&resource))
+		};
+		self.resource = Some(resource);
 	}
 }
 
@@ -355,8 +357,8 @@ impl From<&OpenReply> for OpenReplyBuf {
 		let mut buf = OpenReplyBuf::new();
 		buf.set_status(reply.status());
 		buf.set_handle(reply.handle());
-		if !reply.resource().is_empty() {
-			buf.set_resource(reply.resource());
+		if let Some(resource) = reply.resource() {
+			buf.set_resource(resource);
 		}
 		buf
 	}
@@ -379,12 +381,12 @@ impl io::Decode for OpenReplyBuf {
 	) -> Result<Self, io::DecodeError<R::Error>> {
 		let status = Status::decode(r)?;
 		let handle = net::Handle::decode(r)?;
-		let resource = CString::decode(r)?;
+		let resource = Option::<CString>::decode(r)?;
 
 		let mut buf = OpenReplyBuf::new();
 		buf.set_status(status);
 		buf.set_handle(handle);
-		if !resource.is_empty() {
+		if let Some(resource) = resource {
 			buf.set_resource(resource);
 		}
 		Ok(buf)

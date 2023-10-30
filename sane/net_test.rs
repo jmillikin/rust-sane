@@ -875,7 +875,9 @@ fn open_reply() {
 			"OpenReply {\n",
 			"    status: SANE_STATUS_ACCESS_DENIED,\n",
 			"    handle: Handle(287454020),\n",
-			"    resource: \"open-resource\",\n",
+			"    resource: Some(\n",
+			"        \"open-resource\",\n",
+			"    ),\n",
 			"}",
 		),
 	);
@@ -1176,7 +1178,9 @@ fn control_option_reply() {
 			"        136,\n",
 			"        153,\n",
 			"    ],\n",
-			"    resource: \"set-value-resource\",\n",
+			"    resource: Some(\n",
+			"        \"set-value-resource\",\n",
+			"    ),\n",
 			"}",
 		),
 	);

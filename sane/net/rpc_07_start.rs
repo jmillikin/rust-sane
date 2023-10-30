@@ -14,8 +14,6 @@
 // SPDX-License-Identifier: 0BSD
 
 #[cfg(any(doc, feature = "alloc"))]
-use alloc::borrow::Cow;
-#[cfg(any(doc, feature = "alloc"))]
 use alloc::ffi::CString;
 
 use core::ffi::CStr;
@@ -171,7 +169,7 @@ struct StartReplyInner<'a> {
 	status: Status,
 	port: u16,
 	byte_order: net::ByteOrder,
-	resource: &'a CStr,
+	resource: Option<&'a CStr>,
 }
 
 impl fmt::Debug for StartReply {
@@ -193,7 +191,7 @@ impl StartReply {
 		self.inner.byte_order
 	}
 
-	pub fn resource(&self) -> &CStr {
+	pub fn resource(&self) -> Option<&CStr> {
 		self.inner.resource
 	}
 }
@@ -236,7 +234,7 @@ impl io::Encode for StartReply {
 #[cfg(any(doc, feature = "alloc"))]
 pub struct StartReplyBuf {
 	inner: StartReplyInner<'static>,
-	resource: Cow<'static, CStr>,
+	resource: Option<CString>,
 }
 
 #[cfg(any(doc, feature = "alloc"))]
@@ -247,9 +245,9 @@ impl StartReplyBuf {
 				status: Status::GOOD,
 				port: 0,
 				byte_order: net::ByteOrder::LITTLE_ENDIAN,
-				resource: util::CSTR_EMPTY,
+				resource: None,
 			},
-			resource: Cow::Borrowed(util::CSTR_EMPTY),
+			resource: None,
 		}
 	}
 
@@ -267,8 +265,8 @@ impl StartReplyBuf {
 
 	pub fn set_resource(&mut self, resource: impl Into<CString>) {
 		let resource = resource.into();
-		self.inner.resource = unsafe { util::cstr_to_static(&resource) };
-		self.resource = Cow::Owned(resource);
+		self.inner.resource = Some(unsafe { util::cstr_to_static(&resource) });
+		self.resource = Some(resource);
 	}
 }
 
@@ -332,8 +330,8 @@ impl From<&StartReply> for StartReplyBuf {
 		buf.set_status(reply.status());
 		buf.set_port(reply.port());
 		buf.set_byte_order(reply.byte_order());
-		if !reply.resource().is_empty() {
-			buf.set_resource(reply.resource());
+		if let Some(resource) = reply.resource() {
+			buf.set_resource(resource);
 		}
 		buf
 	}
@@ -357,7 +355,7 @@ impl io::Decode for StartReplyBuf {
 		let status = Status::decode(r)?;
 		let port = Word::decode(r)?.as_u32();
 		let byte_order = net::ByteOrder::decode(r)?;
-		let resource = CString::decode(r)?;
+		let resource = Option::<CString>::decode(r)?;
 
 		// FIXME: error if port > u16::MAX
 
@@ -365,7 +363,7 @@ impl io::Decode for StartReplyBuf {
 		buf.set_status(status);
 		buf.set_port(port as u16);
 		buf.set_byte_order(byte_order);
-		if !resource.is_empty() {
+		if let Some(resource) = resource {
 			buf.set_resource(resource);
 		}
 		Ok(buf)
