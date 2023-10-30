@@ -53,7 +53,6 @@ impl io::Encode for GetOptionDescriptorsRequest {
 		&self,
 		w: &mut io::Writer<W>,
 	) -> Result<(), io::EncodeError<W::Error>> {
-		net::ProcedureNumber::GET_OPTION_DESCRIPTORS.encode(w)?;
 		self.handle.encode(w)
 	}
 }
@@ -158,8 +157,6 @@ impl io::Decode for GetOptionDescriptorsRequestBuf {
 	fn decode<R: io::Read>(
 		r: &mut io::Reader<R>,
 	) -> Result<Self, io::DecodeError<R::Error>> {
-		let _proc_no = net::ProcedureNumber::decode(r)?;
-		// FIXME: check procedure number is GET_OPTION_DESCRIPTORS
 		let handle = net::Handle::decode(r)?;
 
 		Ok(GetOptionDescriptorsRequestBuf {

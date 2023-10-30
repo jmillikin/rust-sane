@@ -78,7 +78,6 @@ impl io::Encode for InitRequest {
 		&self,
 		w: &mut io::Writer<W>,
 	) -> Result<(), io::EncodeError<W::Error>> {
-		net::ProcedureNumber::INIT.encode(w)?;
 		Word::new(self.version_code()).encode(w)?;
 		self.username().encode(w)
 	}
@@ -197,8 +196,6 @@ impl io::Decode for InitRequestBuf {
 	fn decode<R: io::Read>(
 		r: &mut io::Reader<R>,
 	) -> Result<Self, io::DecodeError<R::Error>> {
-		let _proc_no = net::ProcedureNumber::decode(r)?;
-		// FIXME: check procedure number is INIT
 		let version_code = Word::decode(r)?.as_u32();
 		let username = CString::decode(r)?;
 

@@ -72,7 +72,6 @@ impl io::Encode for OpenRequest {
 		&self,
 		w: &mut io::Writer<W>,
 	) -> Result<(), io::EncodeError<W::Error>> {
-		net::ProcedureNumber::OPEN.encode(w)?;
 		self.device_name().encode(w)
 	}
 }
@@ -184,8 +183,6 @@ impl io::Decode for OpenRequestBuf {
 	fn decode<R: io::Read>(
 		r: &mut io::Reader<R>,
 	) -> Result<Self, io::DecodeError<R::Error>> {
-		let _proc_no = net::ProcedureNumber::decode(r)?;
-		// FIXME: check procedure number is OPEN
 		let device_name = CString::decode(r)?;
 
 		let mut buf = OpenRequestBuf::new();

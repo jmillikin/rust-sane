@@ -38,7 +38,6 @@ impl io::Encode for GetParametersRequest {
 		&self,
 		w: &mut io::Writer<W>,
 	) -> Result<(), io::EncodeError<W::Error>> {
-		net::ProcedureNumber::GET_PARAMETERS.encode(w)?;
 		self.handle.encode(w)
 	}
 }
@@ -143,8 +142,6 @@ impl io::Decode for GetParametersRequestBuf {
 	fn decode<R: io::Read>(
 		r: &mut io::Reader<R>,
 	) -> Result<Self, io::DecodeError<R::Error>> {
-		let _proc_no = net::ProcedureNumber::decode(r)?;
-		// FIXME: check procedure number is GET_PARAMETERS
 		let handle = net::Handle::decode(r)?;
 
 		Ok(GetParametersRequestBuf {

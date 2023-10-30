@@ -45,7 +45,6 @@ impl io::Encode for StartRequest {
 		&self,
 		w: &mut io::Writer<W>,
 	) -> Result<(), io::EncodeError<W::Error>> {
-		net::ProcedureNumber::START.encode(w)?;
 		self.handle.encode(w)
 	}
 }
@@ -150,8 +149,6 @@ impl io::Decode for StartRequestBuf {
 	fn decode<R: io::Read>(
 		r: &mut io::Reader<R>,
 	) -> Result<Self, io::DecodeError<R::Error>> {
-		let _proc_no = net::ProcedureNumber::decode(r)?;
-		// FIXME: check procedure number is START
 		let handle = net::Handle::decode(r)?;
 
 		Ok(StartRequestBuf {

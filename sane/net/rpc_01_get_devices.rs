@@ -22,7 +22,6 @@ use core::fmt;
 
 #[allow(unused_imports)]
 use crate::{Bool, Status, Word};
-use crate::net;
 use crate::net::io;
 use crate::util;
 
@@ -42,9 +41,9 @@ impl fmt::Debug for GetDevicesRequest {
 impl io::Encode for GetDevicesRequest {
 	fn encode<W: io::Write>(
 		&self,
-		w: &mut io::Writer<W>,
+		_w: &mut io::Writer<W>,
 	) -> Result<(), io::EncodeError<W::Error>> {
-		net::ProcedureNumber::GET_DEVICES.encode(w)
+		Ok(())
 	}
 }
 
@@ -130,10 +129,8 @@ impl io::Encode for GetDevicesRequestBuf {
 #[cfg(any(doc, feature = "alloc"))]
 impl io::Decode for GetDevicesRequestBuf {
 	fn decode<R: io::Read>(
-		r: &mut io::Reader<R>,
+		_r: &mut io::Reader<R>,
 	) -> Result<Self, io::DecodeError<R::Error>> {
-		let _proc_no = net::ProcedureNumber::decode(r)?;
-		// FIXME: check procedure number is GET_DEVICES
 		Ok(GetDevicesRequestBuf::new())
 	}
 }

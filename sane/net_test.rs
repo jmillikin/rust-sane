@@ -709,7 +709,6 @@ fn init_request() {
 
 	let bytes = encode_ok!(&request);
 	assert_eq!(bytes, concat_bytes_!(
-		[0, 0, 0, 0],             // SANE_NET_INIT
 		[0x11, 0x22, 0x33, 0x44], // version_code
 		[0, 0, 0, 4],             // username.len
 		b"aaa\x00",
@@ -757,9 +756,7 @@ fn get_devices_request() {
 	);
 
 	let bytes = encode_ok!(request);
-	assert_eq!(bytes, concat_bytes_!(
-		[0, 0, 0, 1], // SANE_NET_GET_DEVICES
-	));
+	assert_eq!(bytes, &[]);
 
 	let decoded: net::GetDevicesRequestBuf = decode_ok!(bytes);
 	assert_eq!(request_buf, decoded);
@@ -856,7 +853,6 @@ fn open_request() {
 
 	let bytes = encode_ok!(request);
 	assert_eq!(bytes, concat_bytes_!(
-		[0, 0, 0, 2],       // SANE_NET_OPEN
 		[0, 0, 0, 12],      // device_name.len
 		b"device-name\x00",
 	));
@@ -913,7 +909,6 @@ fn close_request() {
 
 	let bytes = encode_ok!(&request);
 	assert_eq!(bytes, concat_bytes_!(
-		[0, 0, 0, 3],             // SANE_NET_CLOSE
 		[0x11, 0x22, 0x33, 0x44], // handle
 	));
 
@@ -952,7 +947,6 @@ fn get_option_descriptors_request() {
 
 	let bytes = encode_ok!(&request);
 	assert_eq!(bytes, concat_bytes_!(
-		[0, 0, 0, 4],             // SANE_NET_GET_OPTION_DESCRIPTORS
 		[0x11, 0x22, 0x33, 0x44], // handle
 	));
 
@@ -1073,7 +1067,6 @@ fn control_option_request_set_int() {
 
 	let bytes = encode_ok!(&request);
 	assert_eq!(bytes, concat_bytes_!(
-		[0, 0, 0, 5],             // SANE_NET_CONTROL_OPTION
 		[0x11, 0x22, 0x33, 0x44], // handle
 		[0x55, 0x55, 0x55, 0x55], // option
 		[0, 0, 0, 1],             // SANE_ACTION_SET_VALUE
@@ -1117,7 +1110,6 @@ fn control_option_request_set_string() {
 
 	let bytes = encode_ok!(&request);
 	assert_eq!(bytes, concat_bytes_!(
-		[0, 0, 0, 5],             // SANE_NET_CONTROL_OPTION
 		[0x11, 0x22, 0x33, 0x44], // handle
 		[0x55, 0x55, 0x55, 0x55], // option
 		[0, 0, 0, 1],             // SANE_ACTION_SET_VALUE
@@ -1153,7 +1145,6 @@ fn control_option_request_set_auto() {
 
 	let bytes = encode_ok!(&request);
 	assert_eq!(bytes, concat_bytes_!(
-		[0, 0, 0, 5],             // SANE_NET_CONTROL_OPTION
 		[0x11, 0x22, 0x33, 0x44], // handle
 		[0x55, 0x55, 0x55, 0x55], // option
 		[0, 0, 0, 2],             // SANE_ACTION_SET_AUTO
@@ -1213,11 +1204,11 @@ fn encode_option_value(value: &net::OptionValueBuf) -> Vec<u8> {
 	request_buf.set_value(value.clone());
 
 	let request_bytes = encode_ok!(&request_buf);
-	Vec::from(&request_bytes[16..])
+	Vec::from(&request_bytes[12..])
 }
 
 fn decode_option_value(mut value_bytes: Vec<u8>) -> net::OptionValueBuf {
-	let mut request_bytes = vec![0u8; 16];
+	let mut request_bytes = vec![0u8; 12];
 	request_bytes.append(&mut value_bytes);
 
 	let request_buf: net::ControlOptionRequestBuf = decode_ok!(request_bytes);
@@ -1378,7 +1369,6 @@ fn get_parameters_request() {
 
 	let bytes = encode_ok!(&request);
 	assert_eq!(bytes, concat_bytes_!(
-		[0, 0, 0, 6],             // SANE_NET_GET_PARAMETERS
 		[0x11, 0x22, 0x33, 0x44], // handle
 	));
 
@@ -1451,7 +1441,6 @@ fn start_request() {
 
 	let bytes = encode_ok!(&request);
 	assert_eq!(bytes, concat_bytes_!(
-		[0, 0, 0, 7],             // SANE_NET_START
 		[0x11, 0x22, 0x33, 0x44], // handle
 	));
 
@@ -1498,7 +1487,6 @@ fn cancel_request() {
 
 	let bytes = encode_ok!(&request);
 	assert_eq!(bytes, concat_bytes_!(
-		[0, 0, 0, 8],             // SANE_NET_CANCEL
 		[0x11, 0x22, 0x33, 0x44], // handle
 	));
 
@@ -1541,8 +1529,6 @@ fn authorize_request() {
 
 	let bytes = encode_ok!(&request);
 	assert_eq!(bytes, concat_bytes_!(
-		[0, 0, 0, 9], // SANE_NET_AUTHORIZE
-
 		[0, 0, 0, 14], // resource.len
 		b"auth-resource\x00",
 		[0, 0, 0, 14], // username.len

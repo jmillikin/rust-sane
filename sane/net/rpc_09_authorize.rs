@@ -22,7 +22,6 @@ use core::ffi::CStr;
 use core::fmt;
 
 use crate::Word;
-use crate::net;
 use crate::net::io;
 #[cfg(any(doc, feature = "alloc"))]
 use crate::util;
@@ -84,7 +83,6 @@ impl io::Encode for AuthorizeRequest {
 		&self,
 		w: &mut io::Writer<W>,
 	) -> Result<(), io::EncodeError<W::Error>> {
-		net::ProcedureNumber::AUTHORIZE.encode(w)?;
 		self.resource().encode(w)?;
 		self.username().encode(w)?;
 		self.password().encode(w)
@@ -222,8 +220,6 @@ impl io::Decode for AuthorizeRequestBuf {
 	fn decode<R: io::Read>(
 		r: &mut io::Reader<R>,
 	) -> Result<Self, io::DecodeError<R::Error>> {
-		let _proc_no = net::ProcedureNumber::decode(r)?;
-		// FIXME: check procedure number is AUTHORIZE
 		let resource = CString::decode(r)?;
 		let username = CString::decode(r)?;
 		let password = CString::decode(r)?;

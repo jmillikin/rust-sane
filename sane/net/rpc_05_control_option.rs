@@ -109,7 +109,6 @@ impl io::Encode for ControlOptionRequest {
 		&self,
 		w: &mut io::Writer<W>,
 	) -> Result<(), io::EncodeError<W::Error>> {
-		net::ProcedureNumber::CONTROL_OPTION.encode(w)?;
 		self.handle().encode(w)?;
 		Word::new(self.option()).encode(w)?;
 		self.action().encode(w)?;
@@ -246,9 +245,6 @@ impl io::Decode for ControlOptionRequestBuf {
 	fn decode<R: io::Read>(
 		r: &mut io::Reader<R>,
 	) -> Result<Self, io::DecodeError<R::Error>> {
-		let _proc_no = net::ProcedureNumber::decode(r)?;
-		// FIXME: check procedure number is CONTROL_OPTION
-
 		let mut buf = ControlOptionRequestBuf::new();
 		buf.set_handle(net::Handle::decode(r)?);
 		buf.set_option(Word::decode(r)?.as_u32());
